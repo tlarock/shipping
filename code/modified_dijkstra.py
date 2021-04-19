@@ -1,12 +1,13 @@
-from queue import PriorityQueue
 from collections import defaultdict
+from heappq import HeapPQ
 
 def route_dijkstra(G, source, num_routes):
     ## initialize data structure
     route_distances = defaultdict(int)
     route_prev = defaultdict(set)
     prev = defaultdict(set)
-    Q = PriorityQueue()
+    Q = HeapPQ()
+    total_queue_size = 0
     for node in G.nodes():
         if node == source:
             continue
@@ -17,24 +18,30 @@ def route_dijkstra(G, source, num_routes):
         ## add node to the queue once per route
         for ne in G.successors(node):
             for route_id in G[node][ne]['routes']:
-                Q.put_nowait((float('inf'), node, route_id))
-
-    route_distances[source] = 0
+                Q.add_task((node, route_id), priority=float('inf'))
+                total_queue_size+=1
+    route_distances[source] = 0 
     for ne in G.successors(source):
-        route_distances[ne] = 1
+        route_distances[ne] = 1 
         for route_id in G[source][ne]['routes']:
-            Q.put_nowait((route_distances[ne], ne, route_id))
+            Q.add_task((ne, route_id), priority=route_distances[ne])
+            total_queue_size+=1
             route_prev[ne].add(route_id)
-            prev[ne].add((source, route_id, 1))
+            prev[ne].add((source, route_id, 1)) 
 
     visited = set()
-    while not Q.empty():
+    while True:
         ## Get the next node from the queue based on shortest path
-        d, node, route_id = Q.get_nowait()
+        popped = Q.pop_task()
+        if not popped:
+            ## Empty queue returns false
+            break
+        else:
+            d, (node, route_id) = popped
+
         visited.add((d, node, route_id))
-        successors = G.successors(node)
         ## For every successor of the node
-        for ne in successors:
+        for ne in G.successors(node):
             if route_distances[ne] >= route_distances[node]:
                 if route_id in G[node][ne]['routes'] and route_id in route_prev[node]:
                     route_distances[ne] = route_distances[node]
@@ -47,10 +54,10 @@ def route_dijkstra(G, source, num_routes):
 
                 for next_route_id in G[node][ne]['routes']:
                     if (route_distances[ne], ne, next_route_id) not in visited:
-                        Q.put_nowait((route_distances[ne], ne, next_route_id))
+                        Q.add_task((ne, next_route_id), priority=route_distances[ne])
+                        total_queue_size += 1
 
     return route_distances, prev
-
 
 def reverse_paths(prev_dict, start_node, source):
     '''
