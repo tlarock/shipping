@@ -3,7 +3,7 @@ import pathpy as pp
 from hypa import Hypa
 from random import shuffle
 
-def rich_club(hy, num_randomizations=0, degree_type='degree'):
+def rich_club(hy, normalized=False, degree_type='degree'):
     # Given: A hypa.Hypa instance
     # Output: Rich-club coefficient for every degree
     ## For now, I will allow passing either a pp.Network object
@@ -14,6 +14,8 @@ def rich_club(hy, num_randomizations=0, degree_type='degree'):
     elif isinstance(hy, pp.Network):
         network = hy
         hy_obj = False
+    else:
+        print("Need either a hypa.Hypa or a pathpy.Network() object.")
 
     ## For each node, assign it to its degree
     nodes_by_degree = dict()
@@ -54,18 +56,19 @@ def rich_club(hy, num_randomizations=0, degree_type='degree'):
             ## there is not anything to compute here or at higher degrees
             break
 
-    if num_randomizations > 0:
+    if normalized:
         if hy_obj:
-            phi = normalize(hy, phi, num_randomizations, degree_type)
+            phi = normalize(hy, phi, degree_type)
         else:
             print("You must pass a Hypa object, not pp.Network, for normalization.")
 
     return phi
 
-def normalize(hy, phi, num_randomizations, degree_type, bad_swap_lim=100):
-    rnd_net = swap_edges(hy, bad_swap_lim=bad_swap_lim)
+def normalize(hy, phi, degree_type, bad_swap_lim=100):
+    num_edges = len(hy.hypa_net.edges)
+    rnd_net = swap_edges(hy, num_swaps=num_edges, bad_swap_lim=num_edges)
     if degree_type == 'degree':
-        phi_rnd = rich_club(rnd_net, num_randomizations=0, degree_type='degree')
+        phi_rnd = rich_club(rnd_net, normalized=False, degree_type='degree')
 
     for deg in phi:
         ## Normalize
@@ -107,13 +110,14 @@ def get_degree(network, degree_type='degree'):
 
     return degrees
 
-def swap_edges(hy, bad_swap_lim=100):
+def swap_edges(hy, num_swaps, bad_swap_lim=100):
     new_network = pp.Network(directed=False)
     edges = [edge for edge, data in hy.hypa_net.edges.items() if 'weight' in data and data['weight'] > 0]
     shuffle(edges)
+    swaps = 0
     bad_swaps = 0
-    duplicate_edge_count = 0
-    while edges:
+    while swaps < num_swaps and edges:
+        shuffle(edges)
         edge = edges[-1]
         if len(edges) == 1:
             new_network.add_edge(edge[0], edge[1])
@@ -122,27 +126,23 @@ def swap_edges(hy, bad_swap_lim=100):
         ## Choose a random edge to swap
         edge_num = np.random.choice(len(edges)-1)
         swap_edge = edges[edge_num]
-        if edge[0] == swap_edge[0] or edge[1] == swap_edge[1]:
-            bad_swaps += 1
-            if bad_swaps >= bad_swap_lim:
-                print("Ran out of patience.")
-                new_network.add_edge(edge[0], edge[1])
-                edges.remove(edge)
-                bad_swaps = 0
-            continue ## Try again, randomization not possible
-        ## Create new edges
-        if (edge[0], swap_edge[1]) in new_network.edges or (swap_edge[0], edge[1]) in new_network.edges:
-            bad_swaps += 1
-            if bad_swaps >= bad_swap_lim:
-                print("Ran out of patience.")
-                new_network.add_edge(edge[0], edge[1])
-                edges.remove(edge)
-                bad_swaps = 0
-            continue
 
+        ## Check if this is a good pair of edges to swap
+        if (edge[0] == swap_edge[0] or edge[1] == swap_edge[1]) or \
+           ((edge[0], swap_edge[1]) in new_network.edges or (swap_edge[0], edge[1]) in new_network.edges):
+            bad_swaps += 1
+            if bad_swaps == bad_swap_lim:
+                print("Reached bad swap limit before finished swapping. Returning.")
+                return new_network
+
+        ## Create new edges
         new_network.add_edge(edge[0], swap_edge[1])
         new_network.add_edge(swap_edge[0], edge[1])
 
         edges.remove(edge)
         edges.remove(swap_edge)
+
+        ## Success!
+        swaps += 1
+
     return new_network
