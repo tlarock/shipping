@@ -59,7 +59,7 @@ def route_dijkstra(G, source, num_routes):
 
     return route_distances, prev
 
-def reverse_paths(prev_dict, start_node, source):
+def reverse_paths(prev_dict, shortest_paths, start_node, source, precomputed_paths):
     '''
     Given the output of the modified dijkstra function,
     find all paths that use the minimum number of routes
@@ -69,7 +69,7 @@ def reverse_paths(prev_dict, start_node, source):
     for next_node, next_route, next_dist in prev_dict[start_node]:
         stack.append((next_node, next_route, next_dist, start_node))
 
-    paths = set()
+    sub_paths = dict()
     curr_path = [start_node]
     while stack:
         node, route, dist, prev_node = stack.pop()
@@ -87,7 +87,13 @@ def reverse_paths(prev_dict, start_node, source):
             curr_path.append(node)
             save_path = list(curr_path)
             save_path.reverse()
-            paths.add(tuple(save_path))
+            shortest_paths[(source, start_node)].add(tuple(save_path))
+            print("Saving path: ", save_path)
+            ## save sub paths for reuse
+            for i in range(1, len(save_path)):
+                if save_path[i] == save_path[-1]:
+                    continue
+                precomputed_paths[(save_path[i], save_path[-1], route)].add(tuple(save_path[i:]))
 
             ## Reset path to continue reading stack
             curr_path = curr_path[0:-1]
@@ -97,26 +103,48 @@ def reverse_paths(prev_dict, start_node, source):
             for next_node,next_route,next_dist in prev_dict[node]:
                 ## if the routes match, accept this node
                 if next_route == route:
-                    stack.append((next_node, next_route, next_dist, node))
-                    add_to_path = True
+                    ## Check for precomputed paths
+                    if (source, next_node, next_route) in precomputed_paths:
+                        for precomp_path in precomputed_paths[(source, next_node, next_route)]:
+                            save_path = list(curr_path)
+                            save_path.reverse()
+                            save_path = list(precomp_path) + [node] + save_path
+                            shortest_paths[(source, start_node)].add(tuple(save_path))
+                    else:
+                        stack.append((next_node, next_route, next_dist, node))
+                        add_to_path = True
+
                 ## If the routes don't match, only accept if the distance
                 ## from the next node is 1 less than the current, meaning we are
                 ## changing routes in a move _towards_ the source
                 elif next_route != route and next_dist == (dist - 1):
-                    stack.append((next_node, next_route, next_dist, node))
-                    add_to_path = True
+                    ## Check for precomputed paths
+                    if (source, next_node, next_route) in precomputed_paths:
+                        for precomp_path in precomputed_paths[(source, next_node, next_route)]:
+                            save_path = list(curr_path)
+                            save_path.reverse()
+                            save_path = list(precomp_path) + [node] + save_path
+                            shortest_paths[(source, start_node)].add(tuple(save_path))
+                    else:
+                        stack.append((next_node, next_route, next_dist, node))
+                        add_to_path = True
 
             ## Actually add the node to the path
             if add_to_path:
                 curr_path.append(node)
 
-    return paths
 
-def shortest_paths_from_prev(prev_dict, source):
+def all_shortest_paths(G, routes):
     shortest_paths = defaultdict(set)
-    for node in prev_dict:
-        paths = reverse_paths(prev_dict, node, source)
-        for path in paths:
-            shortest_paths[node].add(path)
+    precomputed_paths = defaultdict(set)
+    for source in G.nodes():
+        distances, prev_dict = route_dijkstra(G, source, len(routes))
+        for target in prev_dict:
+            ## If there is an edge between them, that is the only path we
+            ## are interested in
+            if G.has_edge(source,target):
+                shortest_paths[(source,target)].add(tuple([source, target]))
+            else:
+                reverse_paths(prev_dict, shortest_paths, target, source, precomputed_paths)
 
     return shortest_paths
