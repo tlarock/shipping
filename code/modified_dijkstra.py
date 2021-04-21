@@ -20,14 +20,14 @@ def route_dijkstra(G, source, num_routes):
             for route_id in G[node][ne]['routes']:
                 Q.add_task((node, route_id), priority=float('inf'))
                 total_queue_size+=1
-    route_distances[source] = 0 
+    route_distances[source] = 0
     for ne in G.successors(source):
-        route_distances[ne] = 1 
+        route_distances[ne] = 1
         for route_id in G[source][ne]['routes']:
             Q.add_task((ne, route_id), priority=route_distances[ne])
             total_queue_size+=1
             route_prev[ne].add(route_id)
-            prev[ne].add((source, route_id, 1)) 
+            prev[ne].add((source, route_id, 1))
 
     visited = set()
     while True:
@@ -82,7 +82,7 @@ def reverse_paths(prev_dict, start_node, source):
         ## Adding this node would create a cyle
         if node in curr_path:
             continue
-        ## If we've found the source, just add to the path
+        ## If we've found the source, save the path
         if node == source:
             curr_path.append(node)
             save_path = list(curr_path)
@@ -100,7 +100,8 @@ def reverse_paths(prev_dict, start_node, source):
                     stack.append((next_node, next_route, next_dist, node))
                     add_to_path = True
                 ## If the routes don't match, only accept if the distance
-                ## from the next node is 1 less than the current (meaning we are changing routes)
+                ## from the next node is 1 less than the current, meaning we are
+                ## changing routes in a move _towards_ the source
                 elif next_route != route and next_dist == (dist - 1):
                     stack.append((next_node, next_route, next_dist, node))
                     add_to_path = True
