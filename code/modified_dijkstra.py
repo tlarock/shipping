@@ -7,7 +7,6 @@ def route_dijkstra(G, source, num_routes):
     route_prev = defaultdict(set)
     prev = defaultdict(set)
     Q = HeapPQ()
-    total_queue_size = 0
     for node in G.nodes():
         if node == source:
             continue
@@ -19,13 +18,12 @@ def route_dijkstra(G, source, num_routes):
         for ne in G.successors(node):
             for route_id in G[node][ne]['routes']:
                 Q.add_task((node, route_id), priority=float('inf'))
-                total_queue_size+=1
+
     route_distances[source] = 0
     for ne in G.successors(source):
         route_distances[ne] = 1
         for route_id in G[source][ne]['routes']:
             Q.add_task((ne, route_id), priority=route_distances[ne])
-            total_queue_size+=1
             route_prev[ne].add(route_id)
             prev[ne].add((source, route_id, 1))
 
@@ -43,19 +41,21 @@ def route_dijkstra(G, source, num_routes):
         ## For every successor of the node
         for ne in G.successors(node):
             if route_distances[ne] >= route_distances[node]:
+                ## Continue existing route
                 if route_id in G[node][ne]['routes'] and route_id in route_prev[node]:
                     route_distances[ne] = route_distances[node]
                     route_prev[ne].add(route_id)
                     prev[ne].add((node, route_id, route_distances[ne]))
+                ## Transfer routes if it would not increase route_distances[ne]
                 elif route_distances[ne] > route_distances[node] and route_id not in route_prev[node]:
                     route_distances[ne] = route_distances[node] + 1
                     route_prev[ne].add(route_id)
                     prev[ne].add((node, route_id, route_distances[ne]))
 
+                ## Add (successor, route) pairs to Q if they aren't there yet
                 for next_route_id in G[node][ne]['routes']:
                     if (route_distances[ne], ne, next_route_id) not in visited:
                         Q.add_task((ne, next_route_id), priority=route_distances[ne])
-                        total_queue_size += 1
 
     return route_distances, prev
 
