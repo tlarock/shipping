@@ -29,13 +29,13 @@ def route_dijkstra(G, source, num_routes):
             for route_id in G[node][ne]['routes']:
                 Q.add_task((node, route_id), priority=float('inf'))
 
-    route_distances[source] = 0 
+    route_distances[source] = 0
     for ne in G.successors(source):
-        route_distances[ne] = 1 
+        route_distances[ne] = 1
         for route_id in G[source][ne]['routes']:
             Q.add_task((ne, route_id), priority=route_distances[ne])
             route_prev[ne].add(route_id)
-            prev[ne].add((source, route_id, 1)) 
+            prev[ne].add((source, route_id, 1))
 
     visited = set()
     while True:
@@ -128,15 +128,14 @@ def reverse_paths(prev_dict, shortest_paths, target, source, precomputed_paths, 
             save_path.reverse()
             save_path = tuple(save_path)
 
-            if len(path_routes) == 0 or route != path_routes[-1]:
-                path_routes.append(route)
-            save_routes = path_routes
-            save_routes.reverse()
-            save_routes = tuple(save_routes)
-
             save_dist = total_dist
             if route not in G[source][node]['routes']:
                 save_dist += 1
+                path_routes.append(next(iter(G[source][node]['routes'])))
+
+            save_routes = path_routes
+            save_routes.reverse()
+            save_routes = tuple(save_routes)
 
             ## remove any paths that are no longer optimal
             min_so_far = float('inf')
@@ -196,6 +195,7 @@ def all_shortest_paths(G, routes):
     sp_routes = defaultdict(dict)
     precomputed_paths = defaultdict(set)
     for source in G.nodes():
+        print(f"Source: {source}.")
         distances, prev_dict = route_dijkstra(G, source, len(routes))
         for target in prev_dict:
             ## If there is an edge between them, that is the only path we
