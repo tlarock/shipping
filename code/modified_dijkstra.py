@@ -1,7 +1,7 @@
 from collections import defaultdict
 from heappq import HeapPQ
 
-def route_dijkstra(G, source, num_routes):
+def route_dijkstra(G, source):
     ## initialize data structures
     ## Dictionary keyed by nodes with value corresponding
     ## to the minimum number of routes from source to every other node
@@ -21,8 +21,6 @@ def route_dijkstra(G, source, num_routes):
         if node == source:
             continue
         route_distances[node] = float('inf')
-        for route_id in range(0, num_routes):
-            route_distances[node] = float('inf')
 
         ## add node to the queue once per route
         for ne in G.successors(node):
@@ -163,12 +161,12 @@ def reverse_paths(prev_dict, shortest_paths, target, source, sp_routes, G):
 
 
 
-def all_shortest_paths(G, routes):
+def all_shortest_paths(G):
     shortest_paths = defaultdict(dict)
     sp_routes = defaultdict(dict)
     for source in G.nodes():
         print(f"Source: {source}.")
-        distances, prev_dict = route_dijkstra(G, source, len(routes))
+        distances, prev_dict = route_dijkstra(G, source)
         for target in prev_dict:
             ## If there is an edge between them, that is the only path we
             ## are interested in
