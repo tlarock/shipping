@@ -80,27 +80,11 @@ def route_dijkstra(G, source, num_routes):
     return route_distances, prev
 
 
-def reverse_paths(prev_dict, shortest_paths, target, source, precomputed_paths, sp_routes, G):
+def reverse_paths(prev_dict, shortest_paths, target, source, sp_routes, G):
     '''
     Given the output of the modified dijkstra function,
     find all paths that use the minimum number of routes
     '''
-    def concatenate_precomp(source, next_node, next_route, precomputed_paths, curr_path, shortest_paths, dist, sp_routes):
-        for (precomp_path,precomp_dist) in precomputed_paths[(source, next_node, next_route)]:
-            save_path = list(curr_path)
-            save_path.reverse()
-            save_path = tuple(list(precomp_path) + [node] + save_path)
-            path_routes.append(route)
-            save_routes = path_routes
-            save_routes.reverse()
-            save_routes = tuple(save_routes)
-            if save_path in shortest_paths[(source, target)]:
-                if shortest_paths[(source, target)][save_path] > dist:
-                    shortest_paths[(source, target)][save_path] = dist
-                    sp_routes[(source,target)][save_path] = save_routes
-            else:
-                shortest_paths[(source, target)][save_path] = dist
-                sp_routes[(source,target)][save_path] = save_routes
     stack = []
     visited = set()
     for next_node, next_route, next_dist in prev_dict[target]:
@@ -153,9 +137,6 @@ def reverse_paths(prev_dict, shortest_paths, target, source, precomputed_paths, 
                 shortest_paths[(source, target)][save_path] = save_dist
                 sp_routes[(source, target)][save_path] = save_routes
 
-            ## save sub paths for reuse
-            #precomputed_paths[(source, target, route)].add((save_path,save_dist))
-
             ## Reset path to continue reading stack
             curr_path = curr_path[0:-1]
             path_routes = path_routes[0:-1]
@@ -164,23 +145,15 @@ def reverse_paths(prev_dict, shortest_paths, target, source, precomputed_paths, 
             for next_node,next_route,next_dist in prev_dict[node]:
                 ## if the routes match, accept this node
                 if next_route == route and next_dist <= dist:
-                    ## Check for precomputed paths
-                    if (source, next_node, next_route) in precomputed_paths:
-                        concatenate_precomp(source, next_node, next_route, precomputed_paths, curr_path, shortest_paths, total_dist, sp_routes)
-                    else:
-                        stack.append((next_node, next_route, next_dist, total_dist, node))
-                        add_to_path = True
+                    stack.append((next_node, next_route, next_dist, total_dist, node))
+                    add_to_path = True
 
                 ## If the routes don't match, only accept if the distance
                 ## from the next node is 1 less than the current, meaning we are
                 ## changing routes in a move _towards_ the source
                 elif next_dist == (dist - 1):
-                    ## Check for precomputed paths
-                    if (source, next_node, next_route) in precomputed_paths:
-                        concatenate_precomp(source, next_node, next_route, precomputed_paths, curr_path, shortest_paths, total_dist+1, sp_routes)
-                    else:
-                        stack.append((next_node, next_route, next_dist, total_dist+1, node))
-                        add_to_path = True
+                    stack.append((next_node, next_route, next_dist, total_dist+1, node))
+                    add_to_path = True
 
             ## Actually add the node to the path
             if add_to_path:
@@ -193,7 +166,6 @@ def reverse_paths(prev_dict, shortest_paths, target, source, precomputed_paths, 
 def all_shortest_paths(G, routes):
     shortest_paths = defaultdict(dict)
     sp_routes = defaultdict(dict)
-    precomputed_paths = defaultdict(set)
     for source in G.nodes():
         print(f"Source: {source}.")
         distances, prev_dict = route_dijkstra(G, source, len(routes))
@@ -203,9 +175,8 @@ def all_shortest_paths(G, routes):
             if G.has_edge(source,target):
                 shortest_paths[(source,target)][tuple([source, target])] = 1
                 for route in G[source][target]['routes']:
-                    #precomputed_paths[(source, target, route)].add((tuple([source,target]),1))
                     sp_routes[(source,target)][tuple([source,target])] = tuple([route])
             else:
-                reverse_paths(prev_dict, shortest_paths, target, source, precomputed_paths, sp_routes, G)
+                reverse_paths(prev_dict, shortest_paths, target, source, sp_routes, G)
 
     return shortest_paths, sp_routes
