@@ -2,179 +2,97 @@ from collections import defaultdict
 from heappq import HeapPQ
 
 def route_dijkstra(G, source):
-    ## initialize data structures
-    ## Dictionary keyed by nodes with value corresponding
-    ## to the minimum number of routes from source to every other node
-    route_distances = defaultdict(int)
-    ## Dicitionary keyed by nodes with value corresponding
-    ## to the set of previous nodes, routes,distances that can
-    ## be followed back to the source usingin minimum routes
+    distances = defaultdict(int)
     prev = defaultdict(set)
-    ## Dictionary keyed by nodes with value corresponding
-    ## to the set of previous routes followable back to
-    ## the source node using minimum routes
-    ##  Should satisfy: route_prev[node] = set([rt for _, rt, _ in prev[node]])
-    route_prev = defaultdict(set)
-
     Q = HeapPQ()
-    for node in G.nodes():
-        if node == source:
-            continue
-        route_distances[node] = float('inf')
-
-        ## add node to the queue once per route
-        for ne in G.successors(node):
-            for route_id in G[node][ne]['routes']:
-                Q.add_task((node, route_id), priority=float('inf'))
-
-    route_distances[source] = 0
-    for ne in G.successors(source):
-        route_distances[ne] = 1
-        for route_id in G[source][ne]['routes']:
-            Q.add_task((ne, route_id), priority=route_distances[ne])
-            route_prev[ne].add(route_id)
-            prev[ne].add((source, route_id, 1))
+    for neighbor in G[source]:
+        distances[neighbor] = 1
+        for route_id in sorted(G[source][neighbor]['routes']):
+            Q.add_task((neighbor, route_id, source), priority=1)
+            prev[neighbor].add((source, route_id, distances[neighbor]))
 
     visited = set()
     while True:
-        ## Get the next node from the queue based on shortest path
         popped = Q.pop_task()
         if not popped:
-            ## Empty queue returns false
             break
         else:
-            d, (node, route_id) = popped
+            d, (node, route_id, prev_node) = popped
 
-        visited.add((d, node, route_id))
+        visited.add((d, node, route_id, prev_node))
+        for neighbor in G[node]:
+            ## It is possible to have cycles since
+            ## we are not finding shortest paths.
+            if neighbor == source:
+                continue
 
-        ## For every successor of the node
-        for ne in G.successors(node):
-            ## If the neighbor distance is larger, we can do better
-            if route_distances[ne] > route_distances[node]:
-                ## Continue existing route if this edge is part of it.
-                if route_id in G[node][ne]['routes'] and route_id in route_prev.get(node, set()):
-                    ## If I got to ne using fewer routes, reset prev
-                    if ne in route_prev:
-                        del route_prev[ne], prev[ne]
+            for nxt_route in sorted(G[node][neighbor]['routes']):
+                if nxt_route == route_id:
+                    ## Case 1: Next edge is the same route as previous edge
+                    ## In this case, we can get to neighbor using the same
+                    ## number of routes. If this is advantageous, do it.
+                    ## We use greater than or equal because we want to keep
+                    ## track of *all* paths in prev, not just a single path.
+                    if distances.get(neighbor, float('inf')) >= distances[node] and \
+                        nxt_route in [pr for _,pr,_ in prev[node]]:
+                        ## If it is a strict >, reset prev
+                        if distances.get(neighbor, float('inf')) > distances[node]:
+                            if neighbor in prev:
+                                del prev[neighbor]
 
-                    route_distances[ne] = route_distances[node]
-                    route_prev[ne].add(route_id)
-                    prev[ne].add((node, route_id, route_distances[ne]))
-                ## Not continuing a route. Only transfer if distance will not increase.
-                elif route_id not in route_prev.get(node, set()):
-                    route_distances[ne] = route_distances[node] + 1
-                    ## Remove any entries from prev corresponding to paths using more routes
-                    if ne in prev:
-                        ne_prev = set(prev[ne])
-                        for tup in ne_prev:
-                            if tup[-1] > route_distances[ne]:
-                                prev[ne].remove(tup)
+                        distances[neighbor] = distances[node]
+                        prev[neighbor].add((node, nxt_route, distances[neighbor]))
+                        if (distances[neighbor], neighbor, nxt_route, node) not in visited:
+                            Q.add_task((neighbor, nxt_route, node), priority=distances[neighbor])
+                else:
+                    ## Case 2: Next edge is not on the same route as previous edge
+                    ## In this case, we may need to transfer routes. We use
+                    ## strictly greater than because if the distances are equal,
+                    ## there is already a path using fewer routes.
+                    if distances.get(neighbor, float('inf')) > distances[node]:
+                        ## We are adding a route, so increase the distance
+                        distances[neighbor] = distances[node] + 1
+                        prev[neighbor].add((node, nxt_route, distances[neighbor]))
+                        if (distances[neighbor], neighbor, nxt_route, node) not in visited:
+                            Q.add_task((neighbor, nxt_route, node), priority=distances[neighbor])
+    return distances, prev
 
-                    route_prev[ne].add(route_id)
-                    prev[ne].add((node, route_id, route_distances[ne]))
-                ## Add (successor, route) pairs to Q if they aren't there yet
-                for next_route_id in G[node][ne]['routes']:
-                    if (route_distances[ne], ne, next_route_id) not in visited and next_route_id in route_prev.get(ne, set()):
-                        Q.add_task((ne, next_route_id), priority=route_distances[ne])
-            ## If the neighbor distance is the same, 
-            elif route_distances[ne] == route_distances[node]:
-                route_prev[ne].add(route_id)
-                prev[ne].add((node, route_id, route_distances[ne]))
-                ## Add (successor, route) pairs to Q if they aren't there yet
-                for next_route_id in G[node][ne]['routes']:
-                    if (route_distances[ne], ne, next_route_id) not in visited and next_route_id in route_prev.get(ne, set()):
-                        Q.add_task((ne, next_route_id), priority=route_distances[ne])
+def reverse_paths(shortest_paths, prev, source, target):
+    path = [target]
+    stack = list()
+    for prev_node, route, d in prev[target]:
+        #print(f'0. Added to stack: {(prev_node, route, d, 1, target)}')
+        stack.append((prev_node, route, d, 1, target))
 
-    return route_distances, prev
-
-
-def reverse_paths(prev_dict, shortest_paths, target, source, sp_routes, G):
-    '''
-    Given the output of the modified dijkstra function,
-    find all paths that use the minimum number of routes
-    '''
-    stack = []
-    visited = set()
-    for next_node, next_route, next_dist in prev_dict[target]:
-        stack.append((next_node, next_route, next_dist, 1, target))
-
-    curr_path = [target]
-    path_routes = []
     while stack:
-        node, route, dist, total_dist, prev_node = stack.pop()
-        print(node,route,dist,total_dist,prev_node)
-        ## Reset curr_path if (1) the last node is the source (we just completed a path)
-        ## OR the last node is not the start node and does not match the prev from the stack
-        if curr_path[-1] == source or (curr_path[-1] != target and curr_path[-1] != prev_node):
-            reset_ind = curr_path.index(prev_node)+1
-            curr_path = curr_path[0:reset_ind]
-            path_routes = path_routes[0:reset_ind]
+        curr_node, curr_route, curr_d, total_d, last_node = stack.pop()
 
-
-        ## Adding this node would create a cyle
-        if node in curr_path:
+        if curr_node in path:
             continue
 
-        ## If this node is connected to the source, make that connection
-        if source in G.predecessors(node):
-            curr_path.append(node)
-            save_path = list(curr_path) + [source]
-            save_path.reverse()
-            save_path = tuple(save_path)
-            save_dist = total_dist
-            if route not in G[source][node]['routes']:
-                save_dist += 1
-                path_routes.append(next(iter(G[source][node]['routes'])))
+        if path[0] != curr_node:
+            path = path[path.index(last_node):]
 
-            save_routes = path_routes
-            save_routes.reverse()
-            save_routes = tuple(save_routes)
+        path = [curr_node] + path
+        for prev_node, prev_route, prev_d in prev[curr_node]:
+            if prev_node == source:
+                ## Case 1: We found the source. Save the path.
+                path = [source] + path
+                if (prev_d == curr_d and curr_route == prev_route):
+                    shortest_paths[(source,target)][tuple(path)] = total_d
+                elif (prev_d == curr_d-1 and curr_route != prev_route):
+                    shortest_paths[(source,target)][tuple(path)] = total_d+1
 
-            ## remove any paths that are no longer optimal
-            min_so_far = float('inf')
-            if (source, target) in shortest_paths and len(shortest_paths[(source,target)]) > 0:
-                min_so_far = min([r for _, r in shortest_paths[(source,target)].items()])
-            if min_so_far < float('inf') and save_dist < min_so_far:
-                del shortest_paths[(source,target)]
-                del sp_routes[(source,target)]
-
-            if save_path in shortest_paths[(source, target)]:
-                if shortest_paths[(source, target)][save_path] > save_dist:
-                    shortest_paths[(source, target)][save_path] = save_dist
-                    sp_routes[(source, target)][save_path] = save_routes
-            elif save_dist <= min_so_far:
-                shortest_paths[(source, target)][save_path] = save_dist
-                sp_routes[(source, target)][save_path] = save_routes
-
-            ## Reset path to continue reading stack
-            curr_path = curr_path[0:-1]
-            path_routes = path_routes[0:-1]
-        else:
-            add_to_path = False
-            for next_node,next_route,next_dist in prev_dict.get(node, set()):
-                ## if the routes match, accept this node
-                if next_route == route and next_dist <= dist:
-                    stack.append((next_node, next_route, next_dist, total_dist, node))
-                    add_to_path = True
-
-                ## If the routes don't match, only accept if the distance
-                ## from the next node is 1 less than the current, meaning we are
-                ## changing routes in a move _towards_ the source
-                elif next_dist == (dist - 1):
-                    stack.append((next_node, next_route, next_dist, total_dist+1, node))
-                    add_to_path = True
-
-            ## Actually add the node to the path
-            if add_to_path:
-                curr_path.append(node)
-                if len(path_routes) == 0 or route != path_routes[-1]:
-                    path_routes.append(route)
-
-
+                path = path[path.index(curr_node):]
+            elif (prev_d == curr_d and curr_route == prev_route):
+                ## Case 2: The next route continues the same route.
+                stack.append((prev_node, prev_route, prev_d, total_d, curr_node))
+            elif (prev_d == curr_d-1 and curr_route != prev_route):
+                ## Case 3: The next route represents a transfer
+                stack.append((prev_node, prev_route, prev_d, total_d+1, curr_node))
 
 def all_shortest_paths(G):
     shortest_paths = defaultdict(dict)
-    sp_routes = defaultdict(dict)
     for source in G.nodes():
         distances, prev_dict = route_dijkstra(G, source)
         for target in prev_dict:
@@ -182,10 +100,7 @@ def all_shortest_paths(G):
             ## are interested in
             if G.has_edge(source,target):
                 shortest_paths[(source,target)][tuple([source, target])] = 1
-                for route in G[source][target]['routes']:
-                    sp_routes[(source,target)][tuple([source,target])] = tuple([route])
             else:
-                reverse_paths(prev_dict, shortest_paths, target, source, sp_routes, G)
+                reverse_paths(shortest_paths, prev_dict, source, target)
 
-
-    return shortest_paths, sp_routes
+    return shortest_paths
