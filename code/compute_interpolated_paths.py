@@ -42,11 +42,8 @@ else:
                 else:
                     G[path[i-1]][path[i]]['routes'].add(route_id)
 
-shortest_paths, sp_routes = all_shortest_paths(G, routes)
+shortest_paths = all_shortest_paths(G)
 
 import pickle
-with open('shortest_paths.pickle', 'wb') as fpickle:
+with open('mrnrp.pickle', 'wb') as fpickle:
     pickle.dump(shortest_paths, fpickle)
-
-with open('shortest_paths_routes.pickle', 'wb') as fpickle:
-    pickle.dump(sp_routes, fpickle)

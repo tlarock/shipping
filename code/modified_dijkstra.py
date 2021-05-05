@@ -34,12 +34,11 @@ def route_dijkstra(G, source):
                     ## We use greater than or equal because we want to keep
                     ## track of *all* paths in prev, not just a single path.
                     if distances.get(neighbor, float('inf')) >= distances[node] and \
-                        nxt_route in [pr for _,pr,_ in prev[node]]:
+                        nxt_route in [pr for _, pr, _ in prev[node]]:
                         ## If it is a strict >, reset prev
                         if distances.get(neighbor, float('inf')) > distances[node]:
                             if neighbor in prev:
                                 del prev[neighbor]
-
                         distances[neighbor] = distances[node]
                         prev[neighbor].add((node, nxt_route, distances[neighbor]))
                         if (distances[neighbor], neighbor, nxt_route, node) not in visited:
@@ -60,18 +59,23 @@ def route_dijkstra(G, source):
 def reverse_paths(shortest_paths, prev, source, target):
     path = [target]
     stack = list()
+    ## Initialize the stack with entries from prev[target]
     for prev_node, route, d in prev[target]:
-        #print(f'0. Added to stack: {(prev_node, route, d, 1, target)}')
         stack.append((prev_node, route, d, 1, target))
 
     while stack:
+        ## Pop the next tuple off the stack
         curr_node, curr_route, curr_d, total_d, last_node = stack.pop()
+
+        ## Reset the path to start at last_node
+        ## Note: It is vital that this happens
+        ## _before_ checking if curr_node is in
+        ## path, otherwise output is determined
+        ## by the order of stack and may be incorrect!
+        path = path[path.index(last_node):]
 
         if curr_node in path:
             continue
-
-        if path[0] != curr_node:
-            path = path[path.index(last_node):]
 
         path = [curr_node] + path
         for prev_node, prev_route, prev_d in prev[curr_node]:
@@ -79,10 +83,9 @@ def reverse_paths(shortest_paths, prev, source, target):
                 ## Case 1: We found the source. Save the path.
                 path = [source] + path
                 if (prev_d == curr_d and curr_route == prev_route):
-                    shortest_paths[(source,target)][tuple(path)] = total_d
+                    shortest_paths[(source, target)][tuple(path)] = total_d
                 elif (prev_d == curr_d-1 and curr_route != prev_route):
-                    shortest_paths[(source,target)][tuple(path)] = total_d+1
-
+                    shortest_paths[(source, target)][tuple(path)] = total_d+1
                 path = path[path.index(curr_node):]
             elif (prev_d == curr_d and curr_route == prev_route):
                 ## Case 2: The next route continues the same route.
@@ -90,6 +93,8 @@ def reverse_paths(shortest_paths, prev, source, target):
             elif (prev_d == curr_d-1 and curr_route != prev_route):
                 ## Case 3: The next route represents a transfer
                 stack.append((prev_node, prev_route, prev_d, total_d+1, curr_node))
+            ## Otherwise, ignore this entry because it will not get us closer to
+            ## the source without unnecessary routes in this instance.
 
 def all_shortest_paths(G):
     shortest_paths = defaultdict(dict)
@@ -98,8 +103,8 @@ def all_shortest_paths(G):
         for target in prev_dict:
             ## If there is an edge between them, that is the only path we
             ## are interested in
-            if G.has_edge(source,target):
-                shortest_paths[(source,target)][tuple([source, target])] = 1
+            if G.has_edge(source, target):
+                shortest_paths[(source, target)][tuple([source, target])] = 1
             else:
                 reverse_paths(shortest_paths, prev_dict, source, target)
 
