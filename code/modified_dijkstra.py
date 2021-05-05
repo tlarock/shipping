@@ -176,17 +176,40 @@ def remove_redundant_paths(paths):
     Accepts a paths defaultdict(dict), the result of all_shortest_paths(G),
     and removes (in-place) all _redundant_  minimum-route paths. A path is
     considered redundant if there is a shorter path that uses the minimum
-    number of routes and touches the same nodes.
+    number of routes and a subset of the same nodes.
 
-    Achieves this by mapping all paths between a given (source, target) pair
+    For example, consider the following set of 3 routes:
+        r1: A-B-C
+        r2: B-C-D
+        r3: B-D
+    In these routes, both the path A-B-C-D and A-B-D connect A and D using
+    2 routes (r1-r2 and r1-r3, respectively). We consider A-B-C-D redundant
+    because A-B-D is shorter, overlapping, and uses the same number of routes.
+
+    In contrast, consider adding the following routes to the first 3:
+        r4: A-E-C
+        r5: C-D
+    Now D can be reached from A using the path A-E-C-D (r4/r5). This route
+    still uses 2 routes, but is longer than A-B-D. However, Since the nodes
+    in the path arecompletely distinct, we do not consider it redundant.
+
+    We test for redundancy by mapping all paths between a given (source, target) pair
     to strings of integers, then using regular expressions to determine which
-    paths are redundant.
+    paths overlap in ways that makes one of them redundant. This method is probably
+    more involved than is necessary, but it works and makes conceptual sense.
+
+    ToDo: Potential alternative is to strip source/target from every path and for
+    each stripped path label it redundant if its intersection with a shorter path
+    is non-zero.
 
     Parameters
     ---------
-    shortest_paths (defaultdict(dict)): A (potentially empty) defaultdict containing
+    paths (defaultdict(dict)): A (potentially empty) defaultdict containing
                         all  minimum-routes paths from every source to every reahcable
                         target in G.
+    Side Effect
+    -----------
+    Modifies paths in-place, removing redundant paths. Prints every 50,000 pairs.
     '''
     def map_path(mapping, reverse_mapping, map_idx, path):
         '''
@@ -213,7 +236,7 @@ def remove_redundant_paths(paths):
     reverse_mapping = dict()
 
     for pair in paths:
-        ## Sort the paths by length
+        ## Sort the paths by length and map them into strings of integers
         sorted_paths = sorted(paths[pair].keys(), key=lambda p: len(p))
         mapped_paths = []
         for path in sorted_paths:
@@ -225,13 +248,17 @@ def remove_redundant_paths(paths):
         for i in range(len(sorted_paths)):
             shorter_path = sorted_paths[i]
             if len(shorter_path) == max_path_len:
+                ## The longest paths can't possibly be redundant,
+                ## so once we reach one we can stop
                 break
             elif shorter_path in removed_paths:
+                ## Skip this path if we already removed it
                 continue
 
-            mapped_sp = mapped_paths[i]
             ## create the regex for this path
-            shorter_path_pattern = ''.join([mapped_sp[i] + '.*' if i < len(mapped_sp)-1 else mapped_sp[i] for i in range(len(mapped_sp))])
+            mapped_sp = mapped_paths[i]
+            shorter_path_pattern = ''.join([mapped_sp[i] + '.*' if i < len(mapped_sp)-1 else mapped_sp[i] \
+                                            for i in range(len(mapped_sp))])
             pattern = re.compile(shorter_path_pattern)
             ## Check against all longer paths
             for j in range(i+1, len(sorted_paths)):
