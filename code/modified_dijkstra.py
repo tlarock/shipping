@@ -14,7 +14,8 @@ def route_dijkstra(G, source):
     ---------
     G (nx.DiGraph): A networkx DiGraph with set of routes as a property  for
                         each edge, e.g. G[u][v]['routes'] = set({r1, r2, r3}).
-                        Route labels can be arbitrary, but are compared with ==.
+                        Route labels can be arbitrary in principle, but must
+                        be == comparable.
     source (object): The source node (must appear in G.nodes()) from which
                         minimum-route distances to all other reachable nodes
                         will be computed.
@@ -148,8 +149,9 @@ def all_shortest_paths(G):
     Parameters
     ---------
     G (nx.DiGraph): A networkx DiGraph with set of routes as a property  for
-                        each edge, e.g. G[u][v]['routes'] = set({r1, r2, r3}).
-                        Route labels can be arbitrary, but are compared with ==.
+                    each edge, e.g. G[u][v]['routes'] = set({r1, r2, r3}).
+                    Route labels can be arbitrary in principle, but must
+                    be == comparable.
     Returns
     ---------
     shortest_paths (defaultdict(dict)): A (potentially empty) defaultdict containing
