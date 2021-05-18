@@ -1,38 +1,33 @@
 def filter_paths(paths, shipping_dists, euclidean_dists, redundancy_thresh=0.5, detour_thresh=1.5):
     '''
     Accepts a paths defaultdict(dict), the result of all_shortest_paths(G),
-    and removes (in-place) all _redundant_  minimum-route paths. A path is
-    considered redundant if there is a shorter path that uses the minimum
-    number of routes and a subset of the same nodes.
+    and removes (in-place) all paths between all pairs of nodes whose
+    detour ratio is detour_thresh times the minimum detour ratio of all paths
+    between the pair, then removes paths that are redundant based on overlap
+    with shorter paths that are also minimum-route.
 
-    For example, consider the following set of 3 routes:
-        r1: A-B-C
-        r2: B-C-D
-        r3: B-D
-    In these routes, both the path A-B-C-D and A-B-D connect A and D using
-    2 routes (r1-r2 and r1-r3, respectively). We consider A-B-C-D redundant
-    because A-B-D is shorter, overlapping, and uses the same number of routes.
-
-    In contrast, consider adding the following routes to the first 3:
-        r4: A-E-C
-        r5: C-D
-    Now D can be reached from A using the path A-E-C-D (r4/r5). This route
-    still uses 2 routes, but is longer than A-B-D. However, Since the nodes
-    in the path arecompletely distinct, we do not consider it redundant.
-
-    We test for redundancy by iterating over the paths from shortest to longest, then
-    comparing each path with all of the paths longer than itself. The comparison works
-    by stripping the source/target nodes from each path, then labeling a longer path
-    redundant if its intersection with the shorter path is non-zero.
 
     Parameters
     ---------
     paths (defaultdict(dict)): A (potentially empty) defaultdict containing
                         all  minimum-routes paths from every source to every reahcable
                         target in G.
+    shipping_dists (dict): A dictionary keyed by tuples of node pairs with value
+                        corresponding to the shipping distance between the pair
+                        of nodes. Used to compute detour ratios.
+    euclidean_dists (dict): A dictionary keyed by tuples of node pairs with value
+                        corresponding to the euclidean distance between the pair
+                        of nodes. Used to compute detour ratios.
+    redundancy_thresh (float): A value between 0 and 1 that governs the filtering
+                        of paths based on redundancy. A value of 1 means only paths
+                        that are completely contained in shorter paths are removed.
+                        A value of 0 means no paths are removed.
+    detour_thresh (float): A value > 1 that indicates how permissive the detour ratio
+                        filtering should be. A value of 1.5 means paths will be accepted
+                        if their detour ratio is 50% larger than the minimum.
     Side Effect
     -----------
-    Modifies paths in-place, removing redundant paths. Prints every 50,000 pairs.
+    Modifies paths in-place, filtering paths. Prints every 50,000 pairs.
     '''
 
     ## Counters for convenience because this process can be slow
@@ -58,7 +53,12 @@ def filter_paths(paths, shipping_dists, euclidean_dists, redundancy_thresh=0.5, 
 
 def filter_detour(paths, pair, shipping_dists, euclidean_dists, detour_thresh):
     '''
-    Filter paths based on distance from the minimum detour ratio
+    Accepts a paths defaultdict(dict), the result of all_shortest_paths(G),
+    and removes (in-place) all paths between the nodes indicated by pair whose
+    detour ratio is detour_thresh times the minimum detour ratio of all paths.
+
+    The detour ratio is the ratio between the actual shipping distance of a route
+    and the euclidean distance between the source and target nodes.
     '''
     ## Compute the detour ratio for every path
     detour_ratios = dict()
@@ -75,7 +75,37 @@ def filter_detour(paths, pair, shipping_dists, euclidean_dists, detour_thresh):
 
 def filter_redundant(paths, pair, redundancy_thresh):
     '''
-    Filter paths based on whether they are redundant
+    Accepts a paths defaultdict(dict), the result of all_shortest_paths(G),
+    and removes (in-place) all _redundant_  minimum-route paths between the
+    nodes indicated by pair. A path is considered redundant if there is a
+    shorter path that uses the minimum number of routes and a subset of
+    the same nodes based on redundancy_thresh.
+
+    For example, consider the following set of 3 routes:
+        r1: A-B-C
+        r2: B-C-D
+        r3: B-D
+    In these routes, both the path A-B-C-D and A-B-D connect A and D using
+    2 routes (r1-r2 and r1-r3, respectively). We consider A-B-C-D redundant
+    because A-B-D is shorter, overlapping, and uses the same number of routes.
+
+    In contrast, consider adding the following routes to the first 3:
+        r4: A-E-C
+        r5: C-D
+    Now D can be reached from A using the path A-E-C-D (r4/r5). This route
+    still uses 2 routes, but is longer than A-B-D. However, Since the nodes
+    in the path are completely distinct, we do not consider it redundant.
+
+    We test for redundancy by iterating over the paths from shortest to longest, then
+    comparing each path with all of the paths longer than itself. The comparison works
+    by stripping the source/target nodes from each path, then labeling a longer path
+    redundant if the intersection between its nodes and those in the shorter path is
+    larger than a threshold when normalized relative to the shorter path. That is:
+        intersection(longer, shorter) / len(shorter) >= threshold
+
+    When redundancy_thresh == 1, paths are only rejected if every port in the shorter
+    path is visited in the longer path.
+
     '''
     ## Sort the paths by length
     sorted_paths = sorted(paths[pair].keys(), key=lambda p: len(p))
