@@ -1,4 +1,3 @@
-import re
 from collections import defaultdict
 from heappq import HeapPQ
 
@@ -173,7 +172,7 @@ def all_shortest_paths(G):
 
 
 
-def remove_redundant_paths(paths):
+def remove_redundant_paths(paths, threshold=0.5):
     '''
     Accepts a paths defaultdict(dict), the result of all_shortest_paths(G),
     and removes (in-place) all _redundant_  minimum-route paths. A path is
@@ -195,14 +194,10 @@ def remove_redundant_paths(paths):
     still uses 2 routes, but is longer than A-B-D. However, Since the nodes
     in the path arecompletely distinct, we do not consider it redundant.
 
-    We test for redundancy by mapping all paths between a given (source, target) pair
-    to strings of integers, then using regular expressions to determine which
-    paths overlap in ways that makes one of them redundant. This method is probably
-    more involved than is necessary, but it works and makes conceptual sense.
-
-    ToDo: Potential alternative is to strip source/target from every path and for
-    each stripped path label it redundant if its intersection with a shorter path
-    is non-zero.
+    We test for redundancy by iterating over the paths from shortest to longest, then
+    comparing each path with all of the paths longer than itself. The comparison works
+    by stripping the source/target nodes from each path, then labeling a longer path
+    redundant if its intersection with the shorter path is non-zero.
 
     Parameters
     ---------
@@ -213,38 +208,17 @@ def remove_redundant_paths(paths):
     -----------
     Modifies paths in-place, removing redundant paths. Prints every 50,000 pairs.
     '''
-    def map_path(mapping, reverse_mapping, map_idx, path):
-        '''
-        Convenience function that maps a path into a string of integers
-        that can be more easily evaluated with regular expressions.
-        '''
-        mapped_sp = []
-        for i in range(len(path)):
-            if path[i] not in mapping:
-                mapping[path[i]] = map_idx
-                reverse_mapping[map_idx] = path[i]
-                map_idx +=1
-            mapped_sp.append(str(mapping[path[i]]))
-        return mapped_sp, mapping, reverse_mapping, map_idx
 
     ## Counters for convenience because this process can be slow
     pair_counter = 0
     total_pairs = 0
-
-    ## Variables to keep track of the mapping from node --> int and
-    ## from int --> node.
-    map_idx = 0
-    mapping = dict()
-    reverse_mapping = dict()
-
     for pair in paths:
+        ## If there is only 1 path, we have no choice
+        if len(paths[pair]) == 1:
+            continue
+
         ## Sort the paths by length and map them into strings of integers
         sorted_paths = sorted(paths[pair].keys(), key=lambda p: len(p))
-        mapped_paths = []
-        for path in sorted_paths:
-            mapped_path, mapping, reverse_mapping, map_idx = map_path(mapping, reverse_mapping, map_idx, path)
-            mapped_paths.append(mapped_path)
-
         max_path_len = len(sorted_paths[-1])
         removed_paths = set()
         for i in range(len(sorted_paths)):
@@ -257,19 +231,18 @@ def remove_redundant_paths(paths):
                 ## Skip this path if we already removed it
                 continue
 
-            ## create the regex for this path
-            mapped_sp = mapped_paths[i]
-            shorter_path_pattern = ''.join([mapped_sp[i] + '.*' if i < len(mapped_sp)-1 else mapped_sp[i] \
-                                            for i in range(len(mapped_sp))])
-            pattern = re.compile(shorter_path_pattern)
+            ## Remove the source and target
+            compare_path = list(shorter_path)
+            del compare_path[0], compare_path[-1]
             ## Check against all longer paths
             for j in range(i+1, len(sorted_paths)):
                 longer_path = sorted_paths[j]
                 if len(longer_path) == len(shorter_path) or longer_path in removed_paths:
                     continue
 
-                mapped_lp = mapped_paths[j]
-                if pattern.match(''.join(mapped_lp)):
+                longer_cmp_path = list(longer_path)
+                del longer_cmp_path[0], longer_cmp_path[-1]
+                if (len(set(longer_cmp_path).intersection(compare_path)) / len(compare_path)) > threshold:
                     removed_paths.add(tuple([c for c in longer_path]))
                     del paths[pair][longer_path]
 
@@ -278,3 +251,4 @@ def remove_redundant_paths(paths):
         if pair_counter == 50_000:
             print(total_pairs)
             pair_counter = 0
+
