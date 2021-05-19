@@ -1,10 +1,10 @@
-def filter_paths(paths, shipping_dists, euclidean_dists, redundancy_thresh=0.5, detour_thresh=1.5):
+def filter_paths(paths, shipping_dists, redundancy_thresh=0.5, distance_thresh=2.0):
     '''
     Accepts a paths defaultdict(dict), the result of all_shortest_paths(G),
     and removes (in-place) all paths between all pairs of nodes whose
-    detour ratio is detour_thresh times the minimum detour ratio of all paths
-    between the pair, then removes paths that are redundant based on overlap
-    with shorter paths that are also minimum-route.
+    total route distance is distance_thresh times the minimum distances
+    computed over all paths between the pair, then removes paths that are
+    redundant based on overlap with shorter paths that are also minimum-route.
 
 
     Parameters
@@ -14,17 +14,15 @@ def filter_paths(paths, shipping_dists, euclidean_dists, redundancy_thresh=0.5, 
                         target in G.
     shipping_dists (dict): A dictionary keyed by tuples of node pairs with value
                         corresponding to the shipping distance between the pair
-                        of nodes. Used to compute detour ratios.
-    euclidean_dists (dict): A dictionary keyed by tuples of node pairs with value
-                        corresponding to the euclidean distance between the pair
-                        of nodes. Used to compute detour ratios.
+                        of nodes.
     redundancy_thresh (float): A value between 0 and 1 that governs the filtering
                         of paths based on redundancy. A value of 1 means only paths
                         that are completely contained in shorter paths are removed.
                         A value of 0 means no paths are removed.
-    detour_thresh (float): A value > 1 that indicates how permissive the detour ratio
+    distance_thresh (float): A value > 1 that indicates how permissive the distance
                         filtering should be. A value of 1.5 means paths will be accepted
-                        if their detour ratio is 50% larger than the minimum.
+                        if their total distance is 50% larger than the minimum for that
+                        pair of source/target nodes.
     Side Effect
     -----------
     Modifies paths in-place, filtering paths. Prints every 50,000 pairs.
@@ -39,8 +37,8 @@ def filter_paths(paths, shipping_dists, euclidean_dists, redundancy_thresh=0.5, 
             continue
 
         ## By definition, this will always keep *at least* the
-        ## path with the minimum detour ratio
-        filter_detour(paths, pair, shipping_dists, euclidean_dists, detour_thresh)
+        ## path with the minimum total route distance
+        filter_distance(paths, pair, shipping_dists, distance_thresh)
 
         ## By definition, this will always keep *at least* the
         ## shortest length path
@@ -51,26 +49,25 @@ def filter_paths(paths, shipping_dists, euclidean_dists, redundancy_thresh=0.5, 
             print(total_pairs)
             pair_counter = 0
 
-def filter_detour(paths, pair, shipping_dists, euclidean_dists, detour_thresh):
+def filter_distance(paths, pair, shipping_dists, distance_thresh):
     '''
     Accepts a paths defaultdict(dict), the result of all_shortest_paths(G),
     and removes (in-place) all paths between the nodes indicated by pair whose
-    detour ratio is detour_thresh times the minimum detour ratio of all paths.
+    total route distance is more than distance_thresh times the minimum distance
+    computed over all paths between the pair of source/target nodes.
 
-    The detour ratio is the ratio between the actual shipping distance of a route
-    and the euclidean distance between the source and target nodes.
     '''
-    ## Compute the detour ratio for every path
-    detour_ratios = dict()
+    ## Compute the total distance for every path
+    total_distances = dict()
     for path in paths[pair]:
         d_r = 0.0
         for i in range(1, len(path)):
             d_r += shipping_dists[path[i-1], path[i]]
-        d_r /= euclidean_dists[path[0], path[-1]]
-        detour_ratios[path] = d_r
-    min_ratio = min(detour_ratios.values())
-    for path in detour_ratios:
-        if detour_ratios[path] > min_ratio*detour_thresh:
+        total_distances[path] = d_r
+
+    min_dist = min(total_distances.values())
+    for path in total_distances:
+        if total_distances[path] > min_dist*distance_thresh:
             del paths[pair][path]
 
 def filter_redundant(paths, pair, redundancy_thresh):
