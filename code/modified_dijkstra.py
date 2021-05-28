@@ -124,6 +124,8 @@ def reverse_paths(shortest_paths, prev, source, target):
         for prev_node, prev_route, prev_d in prev[curr_node]:
             if prev_node == source:
                 ## Case 1: We found the source. Save the path.
+                ## Extra conditionals just make sure we only
+                ## have the paths at the right distance
                 path = [source] + path
                 if (prev_d == curr_d and curr_route == prev_route):
                     shortest_paths[(source, target)][tuple(path)] = total_d
