@@ -45,5 +45,5 @@ else:
 shortest_paths = all_shortest_paths(G)
 
 import pickle
-with open('mrnrp.pickle', 'wb') as fpickle:
+with open('../results/interpolated_paths/minimum_route_paths.pickle', 'wb') as fpickle:
     pickle.dump(shortest_paths, fpickle)
