@@ -180,7 +180,7 @@ def reverse_paths(shortest_paths, shortest_path_routes, prev, source, target, al
         ## _before_ checking if curr_node is in
         ## path, otherwise output is determined
         ## by the order of stack and may be incorrect!
-        if path[0] != last_node or Counter(path)[last_node] != ln_count:
+        if path[0] != last_node or sum([1 for u in path if u == last_node]) != ln_count:
             reset_idx = compute_reset(path, last_node, ln_count)
             path = path[reset_idx:]
             if len(path) == 1:
@@ -192,7 +192,6 @@ def reverse_paths(shortest_paths, shortest_path_routes, prev, source, target, al
         ## This conditional should prevent us from getting trapped in infinite cycles
         node_counts = Counter([curr_node]  + path)
         if node_counts[curr_node] > 2 or sum([1 if node_counts[n] > 1 else 0 for n in node_counts]) > 1:
-            #reset_idx = path.index(last_node)
             reset_idx = compute_reset(path, last_node, ln_count)
             path = path[reset_idx:]
             if len(path) == 1:
@@ -233,10 +232,10 @@ def reverse_paths(shortest_paths, shortest_path_routes, prev, source, target, al
                 assert len(path) == len(path_routes)+1, f'3. {path}, {path_routes}'
             elif prev_d == curr_d and curr_route == prev_route and prev_node != target:
                 ## Case 2: The next route continues the same route.
-                stack.append((prev_node, prev_route, prev_d, total_d, curr_node, Counter(path)[curr_node]))
+                stack.append((prev_node, prev_route, prev_d, total_d, curr_node, sum([1 for u in path if u == curr_node])))
             elif prev_d == curr_d-1 and curr_route != prev_route and prev_node != target:
                 ## Case 3: The next route represents a transfer
-                stack.append((prev_node, prev_route, prev_d, total_d+1, curr_node, Counter(path)[curr_node]))
+                stack.append((prev_node, prev_route, prev_d, total_d+1, curr_node, sum([1 for u in path if u == curr_node])))
 
             ## Otherwise, ignore this entry because it will not get us closer to
             ## the source without unnecessary routes in this instance.
