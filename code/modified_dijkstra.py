@@ -281,7 +281,7 @@ def all_shortest_paths(G, all_routes, log_every=50000, print_st=False):
         distances, prev_dict = route_dijkstra(G, source, routes_by_node)
         for target in prev_dict:
             if print_st:
-                print(f'Target: {target}', flush=True)
+                print(f'\tTarget: {target}', flush=True)
 
             ## If there is an edge between them, that is the only path we
             ## are interested in
