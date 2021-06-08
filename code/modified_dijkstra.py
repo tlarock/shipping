@@ -212,15 +212,16 @@ def reverse_paths(shortest_paths, shortest_path_routes, prev, source, target, al
                 path = [source] + path
                 path_routes = [prev_route] + path_routes
                 ## Verify the route
-                verified = verify_route(path, path_routes, all_routes)
-                if (prev_d == curr_d and curr_route == prev_route) and total_d == distances[target] and verified:
-                    shortest_paths[(source, target)][tuple(path)] = total_d
-                    shortest_path_routes[(source,target)].setdefault(tuple(path),[])
-                    shortest_path_routes[(source,target)][tuple(path)].append(path_routes)
-                elif (prev_d == curr_d-1 and curr_route != prev_route) and total_d+1 == distances[target] and verified:
-                    shortest_paths[(source, target)][tuple(path)] = total_d+1
-                    shortest_path_routes[(source,target)].setdefault(tuple(path),[])
-                    shortest_path_routes[(source,target)][tuple(path)].append(path_routes)
+                if (prev_d == curr_d and curr_route == prev_route) and total_d == distances[target]:
+                    if verify_route(path, path_routes, all_routes):
+                        shortest_paths[(source, target)][tuple(path)] = total_d
+                        shortest_path_routes[(source,target)].setdefault(tuple(path),[])
+                        shortest_path_routes[(source,target)][tuple(path)].append(path_routes)
+                elif (prev_d == curr_d-1 and curr_route != prev_route) and total_d+1 == distances[target]:
+                    if verify_route(path, path_routes, all_routes):
+                        shortest_paths[(source, target)][tuple(path)] = total_d+1
+                        shortest_path_routes[(source,target)].setdefault(tuple(path),[])
+                        shortest_path_routes[(source,target)][tuple(path)].append(path_routes)
 
                 ## Reset path to the most recent occuurence of curr_node
                 reset_idx = path.index(curr_node)
