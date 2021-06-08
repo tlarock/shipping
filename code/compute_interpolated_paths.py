@@ -33,7 +33,7 @@ else:
     routes =[]
     G = nx.DiGraph()
     with open('../data/all_routes_2015.ngram', 'r') as fin:
-        for route_id, line in enumerate(fin):
+        for route_id, line in enumerate(fin, start=1):
             path = remove_selfloops(line.strip().split(','))
             routes.append(path)
             for i in range(1, len(path)):
@@ -42,8 +42,8 @@ else:
                 else:
                     G[path[i-1]][path[i]]['routes'].add(route_id)
 
-shortest_paths = all_shortest_paths(G)
+shortest_paths = all_shortest_paths(G, routes)
 
 import pickle
-with open('../results/interpolated_paths/minimum_route_paths.pickle', 'wb') as fpickle:
+with open('../results/interpolated_paths/minimum_route_paths_cyclic.pickle', 'wb') as fpickle:
     pickle.dump(shortest_paths, fpickle)
