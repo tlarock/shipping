@@ -240,7 +240,7 @@ def reverse_paths(shortest_paths, shortest_path_routes, prev, source, target, al
             ## Otherwise, ignore this entry because it will not get us closer to
             ## the source without unnecessary routes in this instance.
 
-def all_shortest_paths(G, all_routes, log_every=50000):
+def all_shortest_paths(G, all_routes, log_every=50000, print_st=False):
     '''
     Accepts a route-labeled graph G and computes all pairs minimum-route paths
     for nodes in G. A minimum-route path should exist between every pair (source, target)
@@ -275,8 +275,14 @@ def all_shortest_paths(G, all_routes, log_every=50000):
     shortest_paths = defaultdict(dict)
     shortest_path_routes = defaultdict(dict)
     for source in G.nodes():
+        if print_st:
+            print(f'Source: {source}', flush=True)
+
         distances, prev_dict = route_dijkstra(G, source, routes_by_node)
         for target in prev_dict:
+            if print_st:
+                print(f'Target: {target}', flush=True)
+
             ## If there is an edge between them, that is the only path we
             ## are interested in
             if G.has_edge(source, target):
@@ -291,6 +297,6 @@ def all_shortest_paths(G, all_routes, log_every=50000):
             pair_count +=1
             if num_pairs == log_every:
                 num_pairs = 0
-                print(f'Approx. {total_pairs-pair_count} remaining.')
+                print(f'Approx. {total_pairs-pair_count} remaining.', flush=True)
 
     return shortest_paths, shortest_path_routes
