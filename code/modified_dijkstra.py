@@ -1,7 +1,7 @@
 from collections import defaultdict
 from heappq import HeapPQ
 
-def route_dijkstra(G, source):
+def route_dijkstra(G, source, routes_by_node):
     '''
     Accepts a route-labeled graph G and source node. Computes
     single source minimum-route distance to all nodes using a
@@ -18,6 +18,9 @@ def route_dijkstra(G, source):
     source (object): The source node (must appear in G.nodes()) from which
                         minimum-route distances to all other reachable nodes
                         will be computed.
+    routes_by_node (dict): A dictionary keyed by node with value corresopnding
+                        to the set of routes leaving a node. Speeds up checking
+                        whether a route can possibly follow a node.
     Returns
     --------
     distances (dict): Dictionary keyed by target node with value corresponding
@@ -26,15 +29,20 @@ def route_dijkstra(G, source):
                         the form (previous_node, route, distance). Can be passed
                         to reverse_paths() to recover actual minimum-route paths.
     '''
-
+    ## Distances and prev dictionaries
     distances = defaultdict(int)
     prev = defaultdict(set)
+    ## This is a convenience data structure that makes it
+    ## easy to check whether a (route, distance) edge appears
+    ## in prev of any node. The information should match prev.
+    rd_pairs = defaultdict(set)
     Q = HeapPQ()
     for neighbor in G[source]:
         distances[neighbor] = 1
         for route_id in sorted(G[source][neighbor]['routes']):
             Q.add_task((neighbor, route_id, source), priority=1)
             prev[neighbor].add((source, route_id, distances[neighbor]))
+            rd_pairs[neighbor].add((route_id,distances[neighbor]))
 
     visited = set()
     while True:
@@ -59,17 +67,10 @@ def route_dijkstra(G, source):
                     ## track of *all* paths in prev, not just a single path.
                     if distances.get(neighbor, float('inf')) >= distances[node]:
                         ## Check if this route is on a minimum-route path
-                        check_mr_path = False
-                        for _, pr, d in prev[node]:
-                            ## Check both route and distance match because prev may
-                            ## contain entries for multiple distances
-                            if nxt_route == pr and d == distances[node]:
-                                check_mr_path = True
-                                break
-
-                        if check_mr_path:
+                        if (nxt_route, distances[node]) in rd_pairs[node]:
                             distances[neighbor] = distances[node]
                             prev[neighbor].add((node, nxt_route, distances[node]))
+                            rd_pairs[neighbor].add((nxt_route, distances[node]))
                             if (distances[node], neighbor, nxt_route, node) not in visited:
                                 Q.add_task((neighbor, nxt_route, node), priority=distances[node])
                 else:
@@ -81,6 +82,7 @@ def route_dijkstra(G, source):
                         ## We are adding a route, so increase the distance
                         distances[neighbor] = distances[node] + 1
                         prev[neighbor].add((node, nxt_route, distances[neighbor]))
+                        rd_pairs[neighbor].add((nxt_route, distances[neighbor]))
                         if (distances[neighbor], neighbor, nxt_route, node) not in visited:
                             Q.add_task((neighbor, nxt_route, node), priority=distances[neighbor])
                     elif distances.get(neighbor, float('inf')) == distances[node]:
@@ -88,9 +90,9 @@ def route_dijkstra(G, source):
                         ## entry if it is possible that this route will be shorter for another
                         ## target besides neighbor
                         ## Check whether nxt_route also appears after neighbor
-                        following_routes = [rt for ne2 in G[neighbor] for rt in G[neighbor][ne2]['routes']]
-                        if nxt_route in following_routes:
+                        if nxt_route in routes_by_node[neighbor]:
                             prev[neighbor].add((node, nxt_route, distances[node]+1))
+                            rd_pairs[neighbor].add((nxt_route, distances[node]+1))
                             if (distances[node]+1, neighbor, nxt_route, node) not in visited:
                                 Q.add_task((neighbor, nxt_route, node), priority=distances[node]+1)
 
@@ -262,11 +264,18 @@ def all_shortest_paths(G, all_routes, log_every=50000):
     pair_count = 0
     total_pairs = len(G.nodes())*len(G.nodes())
 
+    ## Routes by node
+    routes_by_node = dict()
+    for node in G.nodes():
+        routes_by_node[node] = set()
+        for neighbor in G[node]:
+            routes_by_node[node].update(set([route for route in G[node][neighbor]['routes']]))
+
     ## Compute all pairs min route paths
     shortest_paths = defaultdict(dict)
     shortest_path_routes = defaultdict(dict)
     for source in G.nodes():
-        distances, prev_dict = route_dijkstra(G, source)
+        distances, prev_dict = route_dijkstra(G, source, routes_by_node)
         for target in prev_dict:
             ## If there is an edge between them, that is the only path we
             ## are interested in
