@@ -316,7 +316,7 @@ def all_shortest_paths(G, all_routes, num_cpus=1, log_every=50000, print_st=Fals
                 shortest_path_routes[(source,target)] = dict(sp_routes)
         else:
             args = [(G, source, target, prev_dict, all_routes, distances) for target in prev_dict]
-            with Pool(4) as p:
+            with Pool(num_cpus) as p:
                 result = p.starmap(compute_paths, args)
                 for target, sp, sp_routes in result:
                     shortest_paths[(source, target)] = dict(sp)
