@@ -135,7 +135,6 @@ def verify_route(path, path_routes, all_routes):
 
     return found_edge
 
-from collections import Counter
 def reverse_paths(shortest_paths, shortest_path_routes, prev, source, target, all_routes, distances):
     '''
     Accepts a (potentially empty) collections.defaultdict(dict), a
@@ -165,6 +164,12 @@ def reverse_paths(shortest_paths, shortest_path_routes, prev, source, target, al
                 break
         return reset_idx
 
+    def count_nodes(path):
+        node_counts  = dict.fromkeys(set([curr_node] + path), 0)
+        for node in [curr_node] + path:
+            node_counts[node] += 1
+        return node_counts
+
     path = [target]
     path_routes = []
     stack = list()
@@ -190,7 +195,7 @@ def reverse_paths(shortest_paths, shortest_path_routes, prev, source, target, al
             assert len(path) == len(path_routes)+1, f'1. {path}, {path_routes}, {reset_idx}'
 
         ## This conditional should prevent us from getting trapped in infinite cycles
-        node_counts = Counter([curr_node]  + path)
+        node_counts = count_nodes([curr_node] + path)
         if node_counts[curr_node] > 2 or sum([1 if node_counts[n] > 1 else 0 for n in node_counts]) > 1:
             reset_idx = compute_reset(path, last_node, ln_count)
             path = path[reset_idx:]
