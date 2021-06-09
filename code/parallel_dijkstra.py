@@ -157,7 +157,7 @@ def reverse_paths(prev, source, target, all_routes, distances):
     '''
     def compute_reset(path, noi, ln_count):
         if ln_count == 1:
-            reset_idx = -(len(path) - path.index(noi))
+            reset_idx = -(len(path) - (path[::-1].index(noi)+1))+1
         else:
             path_count = 0
             for idx, node in enumerate(path[::-1]):
@@ -169,10 +169,14 @@ def reverse_paths(prev, source, target, all_routes, distances):
         return reset_idx
 
     def count_nodes(path):
-        node_counts  = dict.fromkeys(set([curr_node] + path), 0)
-        for node in [curr_node] + path:
+        cycle_nodes = set()
+        node_counts = dict.fromkeys(set(path), 0)
+        for node in path:
             node_counts[node] += 1
-        return node_counts
+            if node_counts[node] > 1:
+                cycle_nodes.add(node)
+
+        return node_counts, len(cycle_nodes)
 
     shortest_paths = dict()
     shortest_path_routes = dict()
@@ -191,18 +195,29 @@ def reverse_paths(prev, source, target, all_routes, distances):
         ## _before_ checking if curr_node is in
         ## path, otherwise output is determined
         ## by the order of stack and may be incorrect!
-        if path[0] != last_node or sum([1 for u in path if u == last_node]) != ln_count:
-            reset_idx = compute_reset(path, last_node, ln_count)
-            path = path[reset_idx:]
+        num_ln = sum([1 for u in path if u == last_node])
+        if path[0] != last_node or num_ln > ln_count:
+            if num_ln > 1:
+                reset_idx = compute_reset(path, last_node, ln_count)
+            else:
+                reset_idx = path.index(last_node)
+
+            if path[reset_idx] == last_node:
+                path = path[reset_idx:]
+            else:
+                path = path[reset_idx-1:]
+
             if len(path) == 1:
                 path_routes = []
+            elif path_routes[reset_idx:] == len(path)-1:
+                path_routes = path_routes[reset_idx:]
             else:
-                path_routes = path_routes[reset_idx+1:]
+                path_routes = path_routes[len(path_routes)-len(path)+1:]
             assert len(path) == len(path_routes)+1, f'1. {path}, {path_routes}, {reset_idx}'
 
         ## This conditional should prevent us from getting trapped in infinite cycles
-        node_counts = count_nodes([curr_node] + path)
-        if node_counts[curr_node] > 2 or sum([1 if node_counts[n] > 1 else 0 for n in node_counts]) > 1:
+        node_counts, num_cycles = count_nodes([curr_node] + path)
+        if node_counts[curr_node] > 2 or num_cycles > 1:
             reset_idx = compute_reset(path, last_node, ln_count)
             path = path[reset_idx:]
             if len(path) == 1:
@@ -243,10 +258,10 @@ def reverse_paths(prev, source, target, all_routes, distances):
                 assert len(path) == len(path_routes)+1, f'3. {path}, {path_routes}'
             elif prev_d == curr_d and curr_route == prev_route and prev_node != target:
                 ## Case 2: The next route continues the same route.
-                stack.append((prev_node, prev_route, prev_d, total_d, curr_node, sum([1 for u in path if u == curr_node])))
+                stack.append((prev_node, prev_route, prev_d, total_d, curr_node, node_counts[curr_node]))
             elif prev_d == curr_d-1 and curr_route != prev_route and prev_node != target:
                 ## Case 3: The next route represents a transfer
-                stack.append((prev_node, prev_route, prev_d, total_d+1, curr_node, sum([1 for u in path if u == curr_node])))
+                stack.append((prev_node, prev_route, prev_d, total_d+1, curr_node, node_counts[curr_node]))
 
             ## Otherwise, ignore this entry because it will not get us closer to
             ## the source without unnecessary routes in this instance.
