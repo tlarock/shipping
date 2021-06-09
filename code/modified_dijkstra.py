@@ -155,13 +155,16 @@ def reverse_paths(shortest_paths, shortest_path_routes, prev, source, target, al
     target (object): a target node (prev[target] must exist and be non-empty)
     '''
     def compute_reset(path, noi, ln_count):
-        path_count = 0
-        for idx, node in enumerate(path[::-1]):
-            if node == noi:
-                path_count += 1
-            if path_count == ln_count:
-                reset_idx = -idx-1
-                break
+        if ln_count == 1:
+            reset_idx = -(len(path) - path.index(noi))
+        else:
+            path_count = 0
+            for idx, node in enumerate(path[::-1]):
+                if node == noi:
+                    path_count += 1
+                if path_count == ln_count:
+                    reset_idx = -idx-1
+                    break
         return reset_idx
 
     def count_nodes(path):
@@ -241,6 +244,8 @@ def reverse_paths(shortest_paths, shortest_path_routes, prev, source, target, al
             elif prev_d == curr_d-1 and curr_route != prev_route and prev_node != target:
                 ## Case 3: The next route represents a transfer
                 stack.append((prev_node, prev_route, prev_d, total_d+1, curr_node, sum([1 for u in path if u == curr_node])))
+            else:
+                print(f"Not adding to stack: {(prev_node, prev_route, prev_d, total_d, curr_node, sum([1 for u in path if u == curr_node]))}")
 
             ## Otherwise, ignore this entry because it will not get us closer to
             ## the source without unnecessary routes in this instance.
