@@ -200,8 +200,14 @@ def reverse_paths(prev, source, target, all_routes, distances):
             if num_ln > 1:
                 reset_idx = compute_reset(path, last_node, ln_count)
             else:
-                reset_idx = path.index(last_node)
-
+                try:
+                    reset_idx = path.index(last_node)
+                except Exception as e:
+                    print(f"Couldn't find {last_node} in {path}, {path_routes}")
+                    print(f'num_ln: {num_ln}, popped: {curr_node, curr_route, curr_d, total_d, last_node, ln_count}')
+                    import sys
+                    sys.exit()
+            print(f'1. Path before: {path}, path_routes:{path_routes}')
             if path[reset_idx] == last_node:
                 path = path[reset_idx:]
             else:
@@ -213,22 +219,40 @@ def reverse_paths(prev, source, target, all_routes, distances):
                 path_routes = path_routes[reset_idx:]
             else:
                 path_routes = path_routes[len(path_routes)-len(path)+1:]
+            print(f'1. Reset path to {path}, path_routes:{path_routes}')
             assert len(path) == len(path_routes)+1, f'1. {path}, {path_routes}, {reset_idx}'
 
         ## This conditional should prevent us from getting trapped in infinite cycles
         node_counts, num_cycles = count_nodes([curr_node] + path)
-        if node_counts[curr_node] > 2 or num_cycles > 1:
+        ## If the current node is already involved in a cycle, we should not add it
+        if node_counts[curr_node] > 2:
+            print(f'2. Path before: {path}, path_routes:{path_routes}')
             reset_idx = compute_reset(path, last_node, ln_count)
-            path = path[reset_idx:]
+            if path[reset_idx] == last_node:
+                path = path[reset_idx:]
+            else:
+                path = path[reset_idx-1:]
             if len(path) == 1:
                 path_routes = []
-            else:
+            elif path_routes[reset_idx:] == len(path)-1:
                 path_routes = path_routes[reset_idx:]
+            else:
+                path_routes = path_routes[len(path_routes)-len(path)+1:]
+            print(f'2. Reset path to {path}, path_routes:{path_routes}')
             assert len(path) == len(path_routes)+1, f'2. {path}, {path_routes}, {reset_idx}'
             continue
+        elif num_cycles > 0:
+            ## The only cycles we allow are when a single route is navigated cyclicly
+            ## Check if the route_id is the same
+            noi = [node for node in node_counts if node_counts[node] > 1 ][0]
+            idx = path.index(noi)
+            if path_routes[idx] != curr_route or not verify_route([curr_node] + path, [curr_route] + path_routes, all_routes):
+                ## This is a bad cycle
+                continue
 
         path = [curr_node] + path
         path_routes = [curr_route] + path_routes
+        #print(f'Path: {path}, path_routes: {path_routes}')
         for prev_node, prev_route, prev_d in prev[curr_node]:
             if prev_node == source:
                 ## Case 1: We found the source. Save the path.
@@ -249,12 +273,14 @@ def reverse_paths(prev, source, target, all_routes, distances):
                         shortest_path_routes[tuple(path)].append(path_routes)
 
                 ## Reset path to the most recent occuurence of curr_node
+                print(f'3. Path before: {path}, {path_routes}')
                 reset_idx = path.index(curr_node)
                 path = path[reset_idx:]
                 if len(path) == 1:
                     path_routes = []
                 else:
                     path_routes = path_routes[reset_idx:]
+                print(f'3. Reset path to: {path}, {path_routes}')
                 assert len(path) == len(path_routes)+1, f'3. {path}, {path_routes}'
             elif prev_d == curr_d and curr_route == prev_route and prev_node != target:
                 ## Case 2: The next route continues the same route.
