@@ -155,104 +155,52 @@ def reverse_paths(prev, source, target, all_routes, distances):
     source (object): a source node (must appear in at least one prev entry)
     target (object): a target node (prev[target] must exist and be non-empty)
     '''
-    def compute_reset(path, noi, ln_count):
-        if ln_count == 1:
-            reset_idx = -(len(path) - (path[::-1].index(noi)+1))+1
-        else:
-            path_count = 0
-            for idx, node in enumerate(path[::-1]):
-                if node == noi:
-                    path_count += 1
-                if path_count == ln_count:
-                    reset_idx = -idx-1
-                    break
-        return reset_idx
-
-    def count_nodes(path):
-        cycle_nodes = set()
-        node_counts = dict.fromkeys(set(path), 0)
-        for node in path:
-            node_counts[node] += 1
-            if node_counts[node] > 1:
-                cycle_nodes.add(node)
-
-        return node_counts, len(cycle_nodes)
-
-    shortest_paths = dict()
-    shortest_path_routes = dict()
-    path = [target]
-    path_routes = []
-    stack = list()
-    ## Initialize the stack with entries from prev[target]
-    for prev_node, route, d in prev[target]:
-        stack.append((prev_node, route, d, 1, target, 1))
-
-    while stack:
-        ## Pop the next tuple off the stack
-        curr_node, curr_route, curr_d, total_d, last_node, ln_count = stack.pop()
-        ## Reset the path to start at last_node
-        ## Note: It is vital that this happens
-        ## _before_ checking if curr_node is in
-        ## path, otherwise output is determined
-        ## by the order of stack and may be incorrect!
-        num_ln = sum([1 for u in path if u == last_node])
-        if path[0] != last_node or num_ln > ln_count:
-            if num_ln > 1:
-                reset_idx = compute_reset(path, last_node, ln_count)
-            else:
-                try:
-                    reset_idx = path.index(last_node)
-                except Exception as e:
-                    print(f"Couldn't find {last_node} in {path}, {path_routes}")
-                    print(f'num_ln: {num_ln}, popped: {curr_node, curr_route, curr_d, total_d, last_node, ln_count}')
-                    import sys
-                    sys.exit()
-            print(f'1. Path before: {path}, path_routes:{path_routes}')
-            if path[reset_idx] == last_node:
-                path = path[reset_idx:]
-            else:
-                path = path[reset_idx-1:]
-
-            if len(path) == 1:
-                path_routes = []
-            elif path_routes[reset_idx:] == len(path)-1:
-                path_routes = path_routes[reset_idx:]
-            else:
-                path_routes = path_routes[len(path_routes)-len(path)+1:]
-            print(f'1. Reset path to {path}, path_routes:{path_routes}')
-            assert len(path) == len(path_routes)+1, f'1. {path}, {path_routes}, {reset_idx}'
-
-        ## This conditional should prevent us from getting trapped in infinite cycles
-        node_counts, num_cycles = count_nodes([curr_node] + path)
-        ## If the current node is already involved in a cycle, we should not add it
-        if node_counts[curr_node] > 2:
-            print(f'2. Path before: {path}, path_routes:{path_routes}')
-            reset_idx = compute_reset(path, last_node, ln_count)
-            if path[reset_idx] == last_node:
-                path = path[reset_idx:]
-            else:
-                path = path[reset_idx-1:]
-            if len(path) == 1:
-                path_routes = []
-            elif path_routes[reset_idx:] == len(path)-1:
-                path_routes = path_routes[reset_idx:]
-            else:
-                path_routes = path_routes[len(path_routes)-len(path)+1:]
-            print(f'2. Reset path to {path}, path_routes:{path_routes}')
-            assert len(path) == len(path_routes)+1, f'2. {path}, {path_routes}, {reset_idx}'
-            continue
+    def check_path(path, path_routes, curr_route, all_routes):
+        accept_path = True
+        node_counts, cycle_nodes = count_nodes(path)
+        num_cycles = len(cycle_nodes)
+        if num_cycles > 1:
+            accept_path = False
         elif num_cycles > 0:
             ## The only cycles we allow are when a single route is navigated cyclicly
             ## Check if the route_id is the same
-            noi = [node for node in node_counts if node_counts[node] > 1 ][0]
-            idx = path.index(noi)
-            if path_routes[idx] != curr_route or not verify_route([curr_node] + path, [curr_route] + path_routes, all_routes):
-                ## This is a bad cycle
-                continue
+            if path[0] in cycle_nodes:
+                idx = path.index(path[0])
+                if path_routes[idx] != curr_route:
+                    ## This is a bad cycle
+                    accept_path = False
+        elif not verify_route(path, path_routes, all_routes):
+            accept_path = False
 
+        return accept_path
+
+    def count_nodes(path):
+        cycle_nodes = set()
+        #node_counts = dict.fromkeys(path, 0)
+        node_counts = dict()
+        for node in path:
+            if node not in node_counts:
+                node_counts[node] = 1
+            else:
+                node_counts[node] += 1
+            if node_counts[node] > 1:
+                cycle_nodes.add(node)
+        return node_counts, cycle_nodes
+
+    shortest_paths = dict()
+    shortest_path_routes = dict()
+    stack = list()
+    ## Initialize the stack with entries from prev[target]
+    for prev_node, route, d in prev[target]:
+        stack.append((prev_node, route, d, 1, [target], [route]))
+
+    while stack:
+        ## Pop the next tuple off the stac
+        curr_node, curr_route, curr_d, total_d, path, path_routes = stack.pop()
         path = [curr_node] + path
-        path_routes = [curr_route] + path_routes
-        #print(f'Path: {path}, path_routes: {path_routes}')
+        if len(path)> 2:
+            path_routes = [curr_route] + path_routes
+
         for prev_node, prev_route, prev_d in prev[curr_node]:
             if prev_node == source:
                 ## Case 1: We found the source. Save the path.
@@ -271,23 +219,17 @@ def reverse_paths(prev, source, target, all_routes, distances):
                         shortest_paths[tuple(path)] = total_d+1
                         shortest_path_routes.setdefault(tuple(path),[])
                         shortest_path_routes[tuple(path)].append(path_routes)
-
-                ## Reset path to the most recent occuurence of curr_node
-                print(f'3. Path before: {path}, {path_routes}')
-                reset_idx = path.index(curr_node)
-                path = path[reset_idx:]
-                if len(path) == 1:
-                    path_routes = []
-                else:
-                    path_routes = path_routes[reset_idx:]
-                print(f'3. Reset path to: {path}, {path_routes}')
-                assert len(path) == len(path_routes)+1, f'3. {path}, {path_routes}'
+                path = path[1:]
+                path_routes = path_routes[1:]
+                #assert len(path) == len(path_routes)+1, f'3. {path}, {path_routes}'
             elif prev_d == curr_d and curr_route == prev_route and prev_node != target:
                 ## Case 2: The next route continues the same route.
-                stack.append((prev_node, prev_route, prev_d, total_d, curr_node, node_counts[curr_node]))
+                if check_path([prev_node] + path, [prev_route] + path_routes, curr_route, all_routes):
+                    stack.append((prev_node, prev_route, prev_d, total_d, path, path_routes))
             elif prev_d == curr_d-1 and curr_route != prev_route and prev_node != target:
                 ## Case 3: The next route represents a transfer
-                stack.append((prev_node, prev_route, prev_d, total_d+1, curr_node, node_counts[curr_node]))
+                if check_path([prev_node] + path, [prev_route] + path_routes, curr_route, all_routes):
+                    stack.append((prev_node, prev_route, prev_d, total_d+1, path, path_routes))
 
             ## Otherwise, ignore this entry because it will not get us closer to
             ## the source without unnecessary routes in this instance.
