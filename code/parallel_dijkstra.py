@@ -99,44 +99,53 @@ def route_dijkstra(G, source, routes_by_node):
 
     return distances, prev
 
-def verify_route(path, path_routes, all_routes):
+def verify_route(path, path_routes, all_routes, edge_indices):
     '''
     Verify that a route is actually possible. Necessary to allow paths
     with cycles in them, especially from cyclic routes.
     '''
     previous_route = -1
     for i in range(len(path)-1):
-        edge = [path[i], path[i+1]]
+        edge = (path[i], path[i+1])
         curr_route_id = path_routes[i]
         roi = all_routes[curr_route_id-1]
         if previous_route == curr_route_id:
             ## Need to check that the previous and
             ## current edges appear in sequence
-            previous_edge = [path[i-1], path[i]]
+            previous_edge = (path[i-1], path[i])
             ## First check if they are at the ends
             found_edge = False
-            if previous_edge == roi[-2:] and edge == roi[0:2]:
+            if previous_edge == tuple(roi[-2:]) and edge == tuple(roi[0:2]):
                 found_edge = True
             else:
                 ## Otherwise check the whole route
-                for j in range(1, len(roi)+1):
-                    if previous_edge == roi[j-1:j+1] and edge == roi[j:j+2]:
-                        found_edge = True
+                #for j in range(1, len(roi)+1):
+                #    if previous_edge == roi[j-1:j+1] and edge == roi[j:j+2]:
+                #        found_edge = True
+                #        break
+                for pe_idx in edge_indices[curr_route_id][previous_edge]:
+                    for e_idx in edge_indices[curr_route_id][edge]:
+                        if  pe_idx == e_idx-1:
+                            found_edge = True
+                            break
+                    if found_edge:
                         break
         else:
             ## Check that the edge exists somewhere in the route
             found_edge = False
-            for j in range(len(roi)+1):
-                if edge == roi[j:j+2]:
-                    found_edge = True
-                    break
+            #for j in range(len(roi)+1):
+            #    if edge == roi[j:j+2]:
+            #        found_edge = True
+            #        break
+            if edge in edge_indices[curr_route_id]:
+                found_edge = True
         if not found_edge:
             break
         previous_route = curr_route_id
 
     return found_edge
 
-def reverse_paths(prev, source, target, all_routes, distances):
+def reverse_paths(prev, source, target, all_routes, distances, edge_indices):
     '''
     Accepts a (potentially empty) collections.defaultdict(dict), a
     dictionary prev (output of route_dijkstra(G, source)), a source
@@ -163,7 +172,7 @@ def reverse_paths(prev, source, target, all_routes, distances):
             ## The only cycles we allow are when a single route is navigated cyclicly
             ## Check if the route_id is the same
             idx = path.index(path[0])
-            if path_routes[idx] != curr_route or not verify_route(path, path_routes, all_routes):
+            if path_routes[idx] != curr_route or not verify_route(path, path_routes, all_routes, edge_indices):
                 ## This is a bad cycle
                 accept_path = False
 
@@ -192,12 +201,12 @@ def reverse_paths(prev, source, target, all_routes, distances):
                 path_routes = [prev_route] + path_routes
                 ## Verify the route
                 if (prev_d == curr_d and curr_route == prev_route) and total_d == distances[target]:
-                    if verify_route(path, path_routes, all_routes):
+                    if verify_route(path, path_routes, all_routes, edge_indices):
                         shortest_paths[tuple(path)] = total_d
                         shortest_path_routes.setdefault(tuple(path),[])
                         shortest_path_routes[tuple(path)].append(path_routes)
                 elif (prev_d == curr_d-1 and curr_route != prev_route) and total_d+1 == distances[target]:
-                    if verify_route(path, path_routes, all_routes):
+                    if verify_route(path, path_routes, all_routes, edge_indices):
                         shortest_paths[tuple(path)] = total_d+1
                         shortest_path_routes.setdefault(tuple(path),[])
                         shortest_path_routes[tuple(path)].append(path_routes)
@@ -220,7 +229,7 @@ def reverse_paths(prev, source, target, all_routes, distances):
     return shortest_paths, shortest_path_routes
 
 
-def compute_paths(G, source, target, prev_dict, all_routes, distances):
+def compute_paths(G, source, target, prev_dict, all_routes, distances, edge_indices):
     ## If there is an edge between them, that is the only path we want
     sp = dict()
     sp_routes = dict()
@@ -229,11 +238,10 @@ def compute_paths(G, source, target, prev_dict, all_routes, distances):
         sp_routes[(source,target)] = []
         for route_id in G[source][target]['routes']:
             sp_routes[(source,target)].append([route_id])
-        return target, sp, sp_routes
     else:
-        sp, sp_routes = reverse_paths(prev_dict, source, target, all_routes, distances)
+        sp, sp_routes = reverse_paths(prev_dict, source, target, all_routes, distances, edge_indices)
 
-        return target, sp, sp_routes
+    return target, sp, sp_routes
 
 def all_shortest_paths(G, all_routes, num_cpus=1, log_every=50000, print_st=False):
     '''
@@ -266,6 +274,15 @@ def all_shortest_paths(G, all_routes, num_cpus=1, log_every=50000, print_st=Fals
         for neighbor in G[node]:
             routes_by_node[node].update(set([route for route in G[node][neighbor]['routes']]))
 
+    ## Edge indices
+    edge_indices = dict()
+    for route_id, route in enumerate(all_routes, start=1):
+        edge_indices[route_id] = dict()
+        for i in range(1, len(route)):
+            edge = (route[i-1], route[i])
+            edge_indices[route_id].setdefault(edge, set())
+            edge_indices[route_id][edge].add(i-1)
+
     ## Compute all pairs min route paths
     shortest_paths = defaultdict(dict)
     shortest_path_routes = defaultdict(dict)
@@ -278,11 +295,11 @@ def all_shortest_paths(G, all_routes, num_cpus=1, log_every=50000, print_st=Fals
             for target in prev_dict:
                 if print_st:
                     print(f'\tTarget: {target}', flush=True)
-                _, sp, sp_routes = compute_paths(G, source, target, prev_dict, all_routes, distances)
+                _, sp, sp_routes = compute_paths(G, source, target, prev_dict, all_routes, distances, edge_indices)
                 shortest_paths[(source,target)] = dict(sp)
                 shortest_path_routes[(source,target)] = dict(sp_routes)
         else:
-            args = [(G, source, target, prev_dict, all_routes, distances) for target in prev_dict]
+            args = [(G, source, target, prev_dict, all_routes, distances, edge_indices) for target in prev_dict]
             with Pool(num_cpus) as p:
                 result = p.starmap(compute_paths, args)
                 for target, sp, sp_routes in result:
