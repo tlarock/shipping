@@ -155,48 +155,30 @@ def reverse_paths(prev, source, target, all_routes, distances):
     source (object): a source node (must appear in at least one prev entry)
     target (object): a target node (prev[target] must exist and be non-empty)
     '''
-    def check_path(path, path_routes, curr_route, all_routes):
+    def check_path(path, path_routes, curr_route, all_routes, num_cycles):
         accept_path = True
-        node_counts, cycle_nodes = count_nodes(path)
-        num_cycles = len(cycle_nodes)
         if num_cycles > 1:
             accept_path = False
         elif num_cycles > 0:
             ## The only cycles we allow are when a single route is navigated cyclicly
             ## Check if the route_id is the same
-            if path[0] in cycle_nodes:
-                idx = path.index(path[0])
-                if path_routes[idx] != curr_route:
-                    ## This is a bad cycle
-                    accept_path = False
-        elif not verify_route(path, path_routes, all_routes):
-            accept_path = False
+            idx = path.index(path[0])
+            if path_routes[idx] != curr_route or not verify_route(path, path_routes, all_routes):
+                ## This is a bad cycle
+                accept_path = False
 
         return accept_path
-
-    def count_nodes(path):
-        cycle_nodes = set()
-        #node_counts = dict.fromkeys(path, 0)
-        node_counts = dict()
-        for node in path:
-            if node not in node_counts:
-                node_counts[node] = 1
-            else:
-                node_counts[node] += 1
-            if node_counts[node] > 1:
-                cycle_nodes.add(node)
-        return node_counts, cycle_nodes
 
     shortest_paths = dict()
     shortest_path_routes = dict()
     stack = list()
     ## Initialize the stack with entries from prev[target]
     for prev_node, route, d in prev[target]:
-        stack.append((prev_node, route, d, 1, [target], [route]))
+        stack.append((prev_node, route, d, 1, [target], [route], 0))
 
     while stack:
         ## Pop the next tuple off the stac
-        curr_node, curr_route, curr_d, total_d, path, path_routes = stack.pop()
+        curr_node, curr_route, curr_d, total_d, path, path_routes, num_cycles = stack.pop()
         path = [curr_node] + path
         if len(path)> 2:
             path_routes = [curr_route] + path_routes
@@ -221,16 +203,18 @@ def reverse_paths(prev, source, target, all_routes, distances):
                         shortest_path_routes[tuple(path)].append(path_routes)
                 path = path[1:]
                 path_routes = path_routes[1:]
-                #assert len(path) == len(path_routes)+1, f'3. {path}, {path_routes}'
             elif prev_d == curr_d and curr_route == prev_route and prev_node != target:
                 ## Case 2: The next route continues the same route.
-                if check_path([prev_node] + path, [prev_route] + path_routes, curr_route, all_routes):
-                    stack.append((prev_node, prev_route, prev_d, total_d, path, path_routes))
+                if prev_node in path and check_path([prev_node] + path, [prev_route] + path_routes, curr_route, all_routes, num_cycles+1):
+                    stack.append((prev_node, prev_route, prev_d, total_d, path, path_routes, num_cycles+1))
+                elif prev_node not in path and check_path([prev_node] + path, [prev_route] + path_routes, curr_route, all_routes, num_cycles):
+                    stack.append((prev_node, prev_route, prev_d, total_d, path, path_routes, num_cycles))
             elif prev_d == curr_d-1 and curr_route != prev_route and prev_node != target:
                 ## Case 3: The next route represents a transfer
-                if check_path([prev_node] + path, [prev_route] + path_routes, curr_route, all_routes):
-                    stack.append((prev_node, prev_route, prev_d, total_d+1, path, path_routes))
-
+                if prev_node in path and check_path([prev_node] + path, [prev_route] + path_routes, curr_route, all_routes, num_cycles+1):
+                    stack.append((prev_node, prev_route, prev_d, total_d+1, path, path_routes, num_cycles+1))
+                elif prev_node not in path and check_path([prev_node] + path, [prev_route] + path_routes, curr_route, all_routes, num_cycles):
+                    stack.append((prev_node, prev_route, prev_d, total_d+1, path, path_routes, num_cycles))
             ## Otherwise, ignore this entry because it will not get us closer to
             ## the source without unnecessary routes in this instance.
     return shortest_paths, shortest_path_routes
