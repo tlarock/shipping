@@ -33,10 +33,12 @@ def route_dijkstra(G, source, routes_by_node):
     ## Distances and prev dictionaries
     distances = defaultdict(int)
     prev = defaultdict(set)
+
     ## This is a convenience data structure that makes it
     ## easy to check whether a (route, distance) edge appears
     ## in prev of any node. The information should match prev.
     rd_pairs = defaultdict(set)
+
     Q = HeapPQ()
     for neighbor in G[source]:
         distances[neighbor] = 1
@@ -52,6 +54,7 @@ def route_dijkstra(G, source, routes_by_node):
             break
         else:
             d, (node, route_id, prev_node) = popped
+
         visited.add((d, node, route_id, prev_node))
         for neighbor in G[node]:
             ## It is possible to have cycles since
@@ -118,11 +121,6 @@ def verify_route(path, path_routes, all_routes, edge_indices):
             if previous_edge == tuple(roi[-2:]) and edge == tuple(roi[0:2]):
                 found_edge = True
             else:
-                ## Otherwise check the whole route
-                #for j in range(1, len(roi)+1):
-                #    if previous_edge == roi[j-1:j+1] and edge == roi[j:j+2]:
-                #        found_edge = True
-                #        break
                 for pe_idx in edge_indices[curr_route_id][previous_edge]:
                     for e_idx in edge_indices[curr_route_id][edge]:
                         if  pe_idx == e_idx-1:
@@ -133,10 +131,6 @@ def verify_route(path, path_routes, all_routes, edge_indices):
         else:
             ## Check that the edge exists somewhere in the route
             found_edge = False
-            #for j in range(len(roi)+1):
-            #    if edge == roi[j:j+2]:
-            #        found_edge = True
-            #        break
             if edge in edge_indices[curr_route_id]:
                 found_edge = True
         if not found_edge:
@@ -230,9 +224,9 @@ def reverse_paths(prev, source, target, all_routes, distances, edge_indices):
 
 
 def compute_paths(G, source, target, prev_dict, all_routes, distances, edge_indices):
-    ## If there is an edge between them, that is the only path we want
     sp = dict()
     sp_routes = dict()
+    ## If there is an edge between them, that is the only path we want
     if G.has_edge(source, target):
         sp[tuple([source, target])] = 1
         sp_routes[(source,target)] = []
