@@ -32,6 +32,7 @@ def filter_paths(paths, shipping_dists, redundancy_thresh=0.5, distance_thresh=2
     pair_counter = 0
     total_pairs = 0
     for pair in paths:
+        print(pair)
         ## If there is only 1 path, we have no choice
         if len(paths[pair]) == 1:
             continue

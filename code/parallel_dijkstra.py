@@ -1,8 +1,9 @@
+import networkx as nx
 from multiprocessing import Pool
 from collections import defaultdict
 from heappq import HeapPQ
 
-def route_dijkstra(G, source, routes_by_node):
+def route_dijkstra(G, source, routes_by_node, precomp_distances):
     '''
     Accepts a route-labeled graph G and source node. Computes
     single source minimum-route distance to all nodes using a
@@ -73,6 +74,8 @@ def route_dijkstra(G, source, routes_by_node):
                         ## Check if this route is on a minimum-route path
                         if (nxt_route, distances[node]) in rd_pairs[node]:
                             distances[neighbor] = distances[node]
+                            if distances[neighbor] < precomp_distances[neighbor]:
+                                distances[neighbor] = precomp_distances[neighbor]
                             prev[neighbor].add((node, nxt_route, distances[node]))
                             rd_pairs[neighbor].add((nxt_route, distances[node]))
                             if (distances[node], neighbor, nxt_route, node) not in visited:
@@ -85,6 +88,8 @@ def route_dijkstra(G, source, routes_by_node):
                     if distances.get(neighbor, float('inf')) > distances[node]:
                         ## We are adding a route, so increase the distance
                         distances[neighbor] = distances[node] + 1
+                        if distances[neighbor] < precomp_distances[neighbor]:
+                            distances[neighbor] = precomp_distances[neighbor]
                         prev[neighbor].add((node, nxt_route, distances[neighbor]))
                         rd_pairs[neighbor].add((nxt_route, distances[neighbor]))
                         if (distances[neighbor], neighbor, nxt_route, node) not in visited:
@@ -160,16 +165,16 @@ def reverse_paths(prev, source, target, all_routes, distances, edge_indices):
     '''
     def check_path(path, path_routes, curr_route, all_routes, num_cycles):
         accept_path = True
-        if num_cycles > 1:
+        if num_cycles > 1 and num_cycles > len(all_routes[curr_route-1]):
             accept_path = False
         elif num_cycles > 0:
             ## The only cycles we allow are when a single route is navigated cyclicly
             ## Check if the route_id is the same
-            idx = path.index(path[0])
-            if path_routes[idx] != curr_route or not verify_route(path, path_routes, all_routes, edge_indices):
-                ## This is a bad cycle
-                accept_path = False
-
+            if path[0] in path[1:]:
+                idx = path[1:].index(path[0])
+                if path_routes[idx] != curr_route or not verify_route(path, path_routes, all_routes, edge_indices):
+                    ## This is a bad cycle
+                    accept_path = False
         return accept_path
 
     shortest_paths = dict()
@@ -177,7 +182,8 @@ def reverse_paths(prev, source, target, all_routes, distances, edge_indices):
     stack = list()
     ## Initialize the stack with entries from prev[target]
     for prev_node, route, d in prev[target]:
-        stack.append((prev_node, route, d, 1, [target], [route], 0))
+        if d == distances[target]:
+            stack.append((prev_node, route, d, 1, [target], [route], 0))
 
     while stack:
         ## Pop the next tuple off the stac
@@ -185,7 +191,6 @@ def reverse_paths(prev, source, target, all_routes, distances, edge_indices):
         path = [curr_node] + path
         if len(path)> 2:
             path_routes = [curr_route] + path_routes
-
         for prev_node, prev_route, prev_d in prev[curr_node]:
             if prev_node == source:
                 ## Case 1: We found the source. Save the path.
@@ -208,8 +213,10 @@ def reverse_paths(prev, source, target, all_routes, distances, edge_indices):
                 path_routes = path_routes[1:]
             elif prev_d == curr_d and curr_route == prev_route and prev_node != target:
                 ## Case 2: The next route continues the same route.
+                ## ...with new cycle
                 if prev_node in path and check_path([prev_node] + path, [prev_route] + path_routes, curr_route, all_routes, num_cycles+1):
                     stack.append((prev_node, prev_route, prev_d, total_d, path, path_routes, num_cycles+1))
+                ## ...without new cycle
                 elif prev_node not in path and check_path([prev_node] + path, [prev_route] + path_routes, curr_route, all_routes, num_cycles):
                     stack.append((prev_node, prev_route, prev_d, total_d, path, path_routes, num_cycles))
             elif prev_d == curr_d-1 and curr_route != prev_route and prev_node != target:
@@ -268,7 +275,8 @@ def all_shortest_paths(G, all_routes, num_cpus=1, log_every=50000, print_st=Fals
         for neighbor in G[node]:
             routes_by_node[node].update(set([route for route in G[node][neighbor]['routes']]))
 
-    ## Edge indices
+    ## Edge indices + clique distances
+    G_indirect = nx.DiGraph()
     edge_indices = dict()
     for route_id, route in enumerate(all_routes, start=1):
         edge_indices[route_id] = dict()
@@ -277,14 +285,25 @@ def all_shortest_paths(G, all_routes, num_cpus=1, log_every=50000, print_st=Fals
             edge_indices[route_id].setdefault(edge, set())
             edge_indices[route_id][edge].add(i-1)
 
+        if route[0] != route[-1]:
+            for i in range(len(route)):
+                for j in range(i+1, len(route)):
+                    if route[i] != route[j]:
+                        G_indirect.add_edge(route[i], route[j])
+        else:
+            for i in range(len(route)):
+                for j in range(len(route)):
+                    if route[i] != route[j]:
+                        G_indirect.add_edge(route[i], route[j])
+
     ## Compute all pairs min route paths
     shortest_paths = defaultdict(dict)
     shortest_path_routes = defaultdict(dict)
     for source in G.nodes():
         if print_st:
             print(f'Source: {source}', flush=True)
-
-        distances, prev_dict = route_dijkstra(G, source, routes_by_node)
+        precomp_distances = nx.single_source_shortest_path_length(G_indirect, source)
+        distances, prev_dict = route_dijkstra(G, source, routes_by_node, precomp_distances)
         if num_cpus < 2:
             for target in prev_dict:
                 if print_st:
