@@ -31,18 +31,29 @@ def route_dijkstra(G, source, all_routes, routes_by_node):
                         the form (previous_node, route, distance). Can be passed
                         to reverse_paths() to recover actual minimum-route paths.
     '''
-    def check_edge_sequence(route, prev_node, node, neighbor):
+    def check_edge_sequence(route, prev_node, node, neighbor, source, distance):
+        '''
+        Given a route and 3 nodes, check if those 3 nodes appeear in
+        sequence on the route, including start --> end.
+        '''
+        if distance == 1:
+            ## get all instances of target
+            source_idx = [idx for idx, u in enumerate(route) if u == source]
+
         found_edge_seq = False
         ## Check the ends
         e1  =[prev_node, node]
         e2 = [node, neighbor]
         if e1 == [route[-2],route[-1]] and e2 == route[0:2]:
-            found_edge_seq = True
+            if distance > 1 or (distance == 1 and any([sidx >= 1 for sidx in source_idx])):
+                found_edge_seq = True
         else:
             for i in range(1, len(route)):
                 if e1 == route[i-1:i+1] and e2 == route[i:i+2]:
+                    if distance > 1 or (distance == 1 and any([sidx <= i-1 for sidx in source_idx])):
                         found_edge_seq=True
                         break
+
         return found_edge_seq
 
     ## Distances and prev dictionaries
@@ -58,7 +69,7 @@ def route_dijkstra(G, source, all_routes, routes_by_node):
     for neighbor in G[source]:
         distances[neighbor] = 1
         for route_id in sorted(G[source][neighbor]['routes']):
-            Q.add_task((neighbor, route_id, source), priority=1)
+            Q.add_task((neighbor, route_id, source), priority=distances[neighbor])
             prev[neighbor].add((source, route_id, distances[neighbor]))
             rd_pairs[neighbor].add((route_id,distances[neighbor]))
 
@@ -70,6 +81,7 @@ def route_dijkstra(G, source, all_routes, routes_by_node):
         else:
             d, (node, route_id, prev_node) = popped
 
+        ## what if I check whethr d == distances[node]?
         visited.add((d, node, route_id, prev_node))
         for neighbor in G[node]:
             ## It is possible to have cycles since
@@ -86,17 +98,22 @@ def route_dijkstra(G, source, all_routes, routes_by_node):
                     ## track of *all* paths in prev, not just a single path.
                     if distances.get(neighbor, float('inf')) >= distances[node]:
                         ## Check if this route is on a minimum-route path
-                        is_seq = check_edge_sequence(all_routes[route_id-1], prev_node, node, neighbor)
-                        if neighbor == 9:
-                            print(f'is_seq: {is_seq}, route: {all_routes[route_id-1]}, path: {prev_node, node, neighbor}')
-                        if (nxt_route, distances[node]) in rd_pairs[node] and is_seq:
+                        is_seq = check_edge_sequence(all_routes[route_id-1], prev_node, node, neighbor, source, distances[node])
+                        ## We need to make sure that there is a labeled edge in prev[node]
+                        ## that uses route_id and the minimum distance to node. This is
+                        ## important because otherwise allowing the algorithm to find 
+                        ## non-optimal entries for prev[node] will result in bad prev entries
+                        if (route_id, distances[node]) in rd_pairs[node] and is_seq:
+                            #if is_seq:
                             distances[neighbor] = distances[node]
-                            if neighbor == 9:
-                                print(f'Setting to {distances[neighbor]}')
-                            prev[neighbor].add((node, nxt_route, distances[node]))
-                            rd_pairs[neighbor].add((nxt_route, distances[node]))
-                            if (distances[neighbor], neighbor, nxt_route, node) not in visited:
-                                Q.add_task((neighbor, nxt_route, node), priority=distances[node])
+                            #elif not is_seq and distances.get(neighbor, float('inf')) > distances[node]:
+                            #    #distances[neighbor] = distances[node] + 1
+                            #    #print(f"Increasing distance to {distances[neighbor]}")
+
+                            prev[neighbor].add((node, route_id, distances[neighbor]))
+                            rd_pairs[neighbor].add((route_id, distances[neighbor]))
+                            if (distances[neighbor], neighbor, route_id, node) not in visited:
+                                Q.add_task((neighbor, route_id, node), priority=distances[neighbor])
                 else:
                     ## Case 2: Next edge is not on the same route as previous edge
                     ## In this case, we may need to transfer routes. We use
@@ -105,8 +122,6 @@ def route_dijkstra(G, source, all_routes, routes_by_node):
                     if distances.get(neighbor, float('inf')) > distances[node]:
                         ## We are adding a route, so increase the distance
                         distances[neighbor] = distances[node] + 1
-                        if neighbor == 9:
-                            print(f'2. Setting to {distances[neighbor]}')
                         prev[neighbor].add((node, nxt_route, distances[neighbor]))
                         rd_pairs[neighbor].add((nxt_route, distances[neighbor]))
                         if (distances[neighbor], neighbor, nxt_route, node) not in visited:
