@@ -91,7 +91,7 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
                         shortest_paths[1].setdefault(route[i], dict())
                         shortest_paths[1][route[i]].setdefault(route[j], dict())
                         shortest_paths[1][route[i]][route[j]].setdefault(tuple(path), set())
-                        route_list = [route_id]*(len(path)-1)
+                        route_list = [f'{route_id}:{len(path)-1}']
                         shortest_paths[1][route[i]][route[j]][tuple(path)].add(tuple(route_list))
                         pairs_counted[(route[i], route[j])] = dist
 
@@ -113,7 +113,7 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
                     shortest_paths[1].setdefault(route[i], dict())
                     shortest_paths[1][route[i]].setdefault(route[j], dict())
                     shortest_paths[1][route[i]][route[j]].setdefault(tuple(path), set())
-                    route_list = [route_id]*(len(path)-1)
+                    route_list = [f'{route_id}:{len(path)-1}']
                     shortest_paths[1][route[i]][route[j]][tuple(path)].add(tuple(route_list))
                     pairs_counted[(route[i], route[j])] = dist
 
