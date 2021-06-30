@@ -1,9 +1,6 @@
 import networkx as nx
 import numpy as np
-import sys
-sys.path.append('../code/')
 from iterative_minroutes import *
-
 
 def remove_selfloops(path):
     i = 1
@@ -30,4 +27,4 @@ with open('../data/all_routes_2015.ngram', 'r') as fin:
 
 #output_file = '../results/interpolated_paths/iterative_paths_with_routes.txt'
 output_file = '/scratch/larock.t/shipping/results/interpolated_paths/iterative_paths_with_routes.txt'
-all_shortest_paths(G, routes,  output_file=output_file)
+all_shortest_paths(G, routes, output_file=output_file)

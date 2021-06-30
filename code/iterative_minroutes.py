@@ -2,7 +2,7 @@ import networkx as nx
 from contextlib import ExitStack
 from collections import defaultdict, Counter
 
-def all_shortest_paths(G, all_routes, output_file=''):
+def all_shortest_paths(G, all_routes, output_file='', distances=None):
     '''
     Accepts a route-labeled graph G and computes all pairs minimum-route paths
     for nodes in G. A minimum-route path should exist between every pair (source, target)
@@ -20,9 +20,18 @@ def all_shortest_paths(G, all_routes, output_file=''):
                         all  minimum-routes paths from every source to every reahcable
                         target in G.
     '''
-    def write_pair(shortest_paths, s, t, dist, fout):
-        for path, route_list in shortest_paths[dist][s][t].items():
-            fout.write(','.join(path) + '|' + str(dist) + '|' + '|'.join([','.join(map(str, r)) for r in route_list]) + '\n')
+    def compute_route_dist(path, distances):
+        d = 0.0
+        for i in range(1, len(path)):
+            d += distances[path[i-1], path[i]]
+        return d
+
+    def write_pair(shortest_paths, s, t, mr_dist, fout, distances):
+        for path, route_list in shortest_paths[mr_dist][s][t].items():
+            if distances is None:
+                fout.write(','.join(path) + '|' + str(mr_dist) + '|' + '|'.join([','.join(map(str, r)) for r in route_list]) + '\n')
+            else:
+                fout.write(','.join(path) + '|' + str(mr_dist) + '|' + str(compute_route_dist(path, distances)) + '|' + '|'.join([','.join(map(str, r)) for r in route_list]) + '\n')
 
     def _add_open_walk(route, route_id, shortest_paths,pairs_counted):
         for i in range(len(route)):
@@ -108,7 +117,7 @@ def all_shortest_paths(G, all_routes, output_file=''):
         ##  Write to file if specified
         if fout is not None:
             for (s,t) in pairs_counted.keys():
-                write_pair(shortest_paths, s, t, dist, fout)
+                write_pair(shortest_paths, s, t, dist, fout, distances)
         for (s,t) in all_distances.keys():
             if all_distances[(s,t)] == 1:
                 assert (s,t) in pairs_counted, f"({s},{t}) not in pairs_counted!"
@@ -157,7 +166,7 @@ def all_shortest_paths(G, all_routes, output_file=''):
                 pairs_counted[(s,t)] = dist
 
                 if fout is not None:
-                    write_pair(shortest_paths, s, t, dist, fout)
+                    write_pair(shortest_paths, s, t, dist, fout, distances)
 
 
             remaining_pairs = reachable_pairs-set(pairs_counted.keys())
