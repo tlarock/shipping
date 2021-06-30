@@ -25,6 +25,14 @@ with open('../data/all_routes_2015.ngram', 'r') as fin:
             else:
                 G[path[i-1]][path[i]]['routes'].add(route_id)
 
+shipping_dist = dict()
+#distance_file = '../data/port_shipping_distances.csv'
+distance_file = '/home/larock.t/git/shipping/data/port_shipping_distances.csv'
+with open(distance_file, 'r') as fin:
+    for line in fin:
+        u,v,dist = line.strip().split(',')
+        shipping_dist[(u,v)] = float(dist)
+
 #output_file = '../results/interpolated_paths/iterative_paths_with_routes.txt'
 output_file = '/scratch/larock.t/shipping/results/interpolated_paths/iterative_paths_with_routes.txt'
-all_shortest_paths(G, routes, output_file=output_file)
+all_shortest_paths(G, routes, output_file=output_file, distances=shipping_dist)
