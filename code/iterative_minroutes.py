@@ -113,7 +113,12 @@ def all_shortest_paths(G, all_routes, num_cpus=1, log_every=50000, print_st=Fals
                 continue
             for w in shortest_paths[dist-1][s]:
                 if w not in shortest_paths[1]:
+                    ## If w can't reach any other nodes in 1 route,
+                    ## then it certainly cannot reach t using 1
+                    ## additional route, so skip it
                     continue
+                ## If t can be reached from w using 1 additional route,
+                ## then t can be reached using dist routes
                 if t in shortest_paths[1][w]:
                     for p1 in shortest_paths[dist-1][s][w]:
                         for p2 in shortest_paths[1][w][t]:
@@ -121,6 +126,7 @@ def all_shortest_paths(G, all_routes, num_cpus=1, log_every=50000, print_st=Fals
                             shortest_paths[dist][s].setdefault(t, dict())
                             shortest_paths[dist][s][t][p1[0:]+p2[1:]] = 1
                             pairs_counted[(s,t)] = dist
+
         remaining_pairs = reachable_pairs-set(pairs_counted.keys())
         print(f'{len(remaining_pairs)} remaining after distance {dist}.')
 
