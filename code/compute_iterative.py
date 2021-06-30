@@ -16,12 +16,6 @@ def remove_selfloops(path):
             i+=1
     return path
 
-def has_selfloop(path):
-    for i in range(1, len(path)):
-        if path[i-1] == path[i]:
-            return True
-    return False
-
 G = nx.DiGraph()
 routes = []
 with open('../data/all_routes_2015.ngram', 'r') as fin:
@@ -34,4 +28,6 @@ with open('../data/all_routes_2015.ngram', 'r') as fin:
             else:
                 G[path[i-1]][path[i]]['routes'].add(route_id)
 
-all_shortest_paths(G, routes,  output_file='../results/interpolated_paths/iterative_paths_with_routes.txt')
+#output_file = '../results/interpolated_paths/iterative_paths_with_routes.txt'
+output_file = '/scratch/larock.t/shipping/results/interpolated_paths/iterative_paths_with_routes.txt'
+all_shortest_paths(G, routes,  output_file=output_file)
