@@ -34,8 +34,4 @@ with open('../data/all_routes_2015.ngram', 'r') as fin:
             else:
                 G[path[i-1]][path[i]]['routes'].add(route_id)
 
-shortest_paths, shortest_path_routes = all_shortest_paths(G, routes, num_cpus=1, print_st=True, log_every=1000)
-
-import pickle
-with open('../results/interpolated_paths/iterative_paths.pickle', 'wb') as fpickle:
-    pickle.dump(shortest_paths, fpickle)
+all_shortest_paths(G, routes,  output_file='../results/interpolated_paths/iterative_paths_with_routes.txt')
