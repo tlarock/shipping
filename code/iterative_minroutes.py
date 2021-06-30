@@ -26,7 +26,7 @@ def all_shortest_paths(G, all_routes, num_cpus=1, log_every=50000, print_st=Fals
                         all  minimum-routes paths from every source to every reahcable
                         target in G.
     '''
-    def _add_open_walk(route, i, j, shortest_paths, pairs_counted):
+    def _add_open_walk(route, route_id, i, j, shortest_paths,pairs_counted):
         for i in range(len(route)):
             for j in range(i+1, len(route)):
                 if route[i] != route[j]:
@@ -34,10 +34,11 @@ def all_shortest_paths(G, all_routes, num_cpus=1, log_every=50000, print_st=Fals
                     if not has_cycle(path):
                         shortest_paths[dist].setdefault(route[i], dict())
                         shortest_paths[dist][route[i]].setdefault(route[j], dict())
-                        shortest_paths[dist][route[i]][route[j]][tuple(path)] = 1
+                        shortest_paths[dist][route[i]][route[j]].setdefault(tuple(path), set())
+                        shortest_paths[dist][route[i]][route[j]][tuple(path)].add(tuple([route_id]*(len(path)-1)))
                         pairs_counted[(route[i], route[j])] = dist
 
-    def _add_closed_walk(route, i, j, shortest_paths, pairs_counted):
+    def _add_closed_walk(route, route_id, i, j, shortest_paths, pairs_counted):
         for i in range(len(route)):
             for j in range(len(route)):
                 if route[i] != route[j]:
@@ -45,7 +46,8 @@ def all_shortest_paths(G, all_routes, num_cpus=1, log_every=50000, print_st=Fals
                         path = route[i:j+1]
                         shortest_paths[dist].setdefault(route[i], dict())
                         shortest_paths[dist][route[i]].setdefault(route[j], dict())
-                        shortest_paths[dist][route[i]][route[j]][tuple(path)] = 1
+                        shortest_paths[dist][route[i]][route[j]].setdefault(tuple(path), set())
+                        shortest_paths[dist][route[i]][route[j]][tuple(path)].add(tuple([route_id]*(len(path)-1)))
                     else:
                         if i < len(route):
                             path = route[i:]
@@ -57,7 +59,8 @@ def all_shortest_paths(G, all_routes, num_cpus=1, log_every=50000, print_st=Fals
                             path += route[1:j+1]
                         shortest_paths[dist].setdefault(route[i], dict())
                         shortest_paths[dist][route[i]].setdefault(route[j], dict())
-                        shortest_paths[dist][route[i]][route[j]][tuple(path)] = 1
+                        shortest_paths[dist][route[i]][route[j]].setdefault(tuple(path), set())
+                        shortest_paths[dist][route[i]][route[j]][tuple(path)].add(tuple([route_id]*(len(path)-1)))
 
                     pairs_counted[(route[i], route[j])] = dist
 
@@ -90,17 +93,16 @@ def all_shortest_paths(G, all_routes, num_cpus=1, log_every=50000, print_st=Fals
 
     pairs_counted = dict()
     shortest_paths = defaultdict(dict)
-    shortest_path_routes = defaultdict(dict)
 
     ## Compute all 1-route pairs
     dist = 1
     for route_id, route in enumerate(all_routes, start=1):
         if route[0] == route[-1]:
             ## Closed walk
-            _add_closed_walk(route, i, j, shortest_paths, pairs_counted)
+            _add_closed_walk(route, route_id, i, j, shortest_paths, pairs_counted)
         else:
             ## Open walk
-            _add_open_walk(route, i, j, shortest_paths, pairs_counted)
+            _add_open_walk(route, route_id, i, j, shortest_paths, pairs_counted)
 
     remaining_pairs = reachable_pairs-set(pairs_counted.keys())
     print(f'{len(remaining_pairs)} remaining after distance 1.')
@@ -124,10 +126,14 @@ def all_shortest_paths(G, all_routes, num_cpus=1, log_every=50000, print_st=Fals
                         for p2 in shortest_paths[1][w][t]:
                             shortest_paths[dist].setdefault(s, dict())
                             shortest_paths[dist][s].setdefault(t, dict())
-                            shortest_paths[dist][s][t][p1[0:]+p2[1:]] = 1
+                            shortest_paths[dist][s][t].setdefault(p1[0:]+p2[1:], list())
+                            for r1 in shortest_paths[dist-1][s][w][p1]:
+                                for r2 in shortest_paths[1][w][t][p2]:
+                                    shortest_paths[dist][s][t][p1[0:]+p2[1:]].append(r1+r2)
+
                             pairs_counted[(s,t)] = dist
 
         remaining_pairs = reachable_pairs-set(pairs_counted.keys())
         print(f'{len(remaining_pairs)} remaining after distance {dist}.')
 
-    return shortest_paths, shortest_path_routes
+    return shortest_paths
