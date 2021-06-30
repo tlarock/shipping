@@ -2,7 +2,68 @@ import networkx as nx
 from contextlib import ExitStack
 from collections import defaultdict, Counter
 
-def all_shortest_paths(G, all_routes, output_file='', distances=None):
+
+def compute_route_dist(path, distances):
+    d = 0.0
+    for i in range(1, len(path)):
+        d += distances[path[i-1], path[i]]
+    return d
+
+def write_pair(shortest_paths, s, t, mr_dist, fout, distances):
+    total_distances = dict()
+    if distances is not None:
+        total_distances = {path:compute_route_dist(path, distances) for path in shortest_paths[mr_dist][s][t]}
+    for path, route_list in shortest_paths[mr_dist][s][t].items():
+        if distances is None:
+            fout.write(','.join(path) + '|' + str(mr_dist) + '|' + '|'.join([','.join(map(str, r)) for r in route_list]) + '\n')
+        else:
+            fout.write(','.join(path) + '|' + str(mr_dist) + '|' + str(total_distances[path]) + '|' + '|'.join([','.join(map(str, r)) for r in route_list]) + '\n')
+    return total_distances
+
+def write_filtered(shortest_paths, s, t, total_distances, mr_dist, ffilt, distance_thresh, redundancy_thresh):
+    ## Do distance filtering
+    filtered_paths = set()
+    ## If there is only 1 path, we skip filtering
+    if len(total_distances) > 1:
+        min_dist = min(total_distances.values())
+        for path in total_distances:
+            if total_distances[path] > min_dist*distance_thresh:
+                filtered_paths.add(path)
+
+        ## Do redundancy filtering
+        sorted_paths = sorted(total_distances.keys(), key=lambda p: len(p))
+        max_path_len = len(sorted_paths[-1])
+        for i in range(len(sorted_paths)):
+            shorter_path = sorted_paths[i]
+            if len(shorter_path) == max_path_len:
+                ## The longest paths can't possibly be redundant,
+                ## so once we reach one we can stop
+                break
+            elif shorter_path in filtered_paths or len(shorter_path) == 2:
+                ## Skip this path if we already removed it or if it is
+                ## a direct edge (we will always keep those)
+                continue
+
+            ## Remove the source and target
+            compare_path = list(shorter_path)
+            del compare_path[0], compare_path[-1]
+            ## Check against all longer paths
+            for j in range(i+1, len(sorted_paths)):
+                longer_path = sorted_paths[j]
+                if len(longer_path) == len(shorter_path) or longer_path in filtered_paths:
+                    continue
+
+                longer_cmp_path = list(longer_path)
+                del longer_cmp_path[0], longer_cmp_path[-1]
+                if (len(set(longer_cmp_path).intersection(compare_path)) / len(compare_path)) >= redundancy_thresh:
+                    filtered_paths.add(tuple([c for c in longer_path]))
+
+    for path, route_list in shortest_paths[mr_dist][s][t].items():
+        if path not in filtered_paths:
+            ffilt.write(','.join(path) + '|' + str(mr_dist) + '|' + str(total_distances[path]) + '|' + '|'.join([','.join(map(str, r)) for r in route_list]) + '\n')
+
+
+def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_threshold=0, redundancy_threshold=0):
     '''
     Accepts a route-labeled graph G and computes all pairs minimum-route paths
     for nodes in G. A minimum-route path should exist between every pair (source, target)
@@ -20,19 +81,6 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None):
                         all  minimum-routes paths from every source to every reahcable
                         target in G.
     '''
-    def compute_route_dist(path, distances):
-        d = 0.0
-        for i in range(1, len(path)):
-            d += distances[path[i-1], path[i]]
-        return d
-
-    def write_pair(shortest_paths, s, t, mr_dist, fout, distances):
-        for path, route_list in shortest_paths[mr_dist][s][t].items():
-            if distances is None:
-                fout.write(','.join(path) + '|' + str(mr_dist) + '|' + '|'.join([','.join(map(str, r)) for r in route_list]) + '\n')
-            else:
-                fout.write(','.join(path) + '|' + str(mr_dist) + '|' + str(compute_route_dist(path, distances)) + '|' + '|'.join([','.join(map(str, r)) for r in route_list]) + '\n')
-
     def _add_open_walk(route, route_id, shortest_paths,pairs_counted):
         for i in range(len(route)):
             for j in range(i+1, len(route)):
@@ -71,6 +119,8 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None):
 
 
     assert min([rt for _,_, edat in G.edges(data=True) for rt in edat['routes']]) > 0, "Route labels must begin with 1."
+    if (distance_threshold > 0 or redundancy_threshold > 0):
+        assert output_file != '', "Filtering only makes sense if output_file is specified."
 
     ## Get all reachable pairs
     reachable_pairs = set()
@@ -102,7 +152,9 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None):
     with ExitStack() as stack:
         fout = None
         if output_file != '':
-            fout = stack.enter_context(open(output_file, 'w'))
+            fout = stack.enter_context(open(output_file + '.txt', 'w'))
+            if distance_threshold > 0 or redundancy_threshold > 0:
+                ffilt = stack.enter_context(open(output_file + f'_filtered_dt-{distance_threshold}_rt-{redundancy_threshold}.txt', 'w'))
 
         ## Compute all 1-route pairs
         dist = 1
@@ -117,7 +169,10 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None):
         ##  Write to file if specified
         if fout is not None:
             for (s,t) in pairs_counted.keys():
-                write_pair(shortest_paths, s, t, dist, fout, distances)
+                total_distances = write_pair(shortest_paths, s, t, dist, fout, distances)
+                if distance_threshold > 0 or redundancy_threshold > 0:
+                    write_filtered(shortest_paths, s, t, total_distances, dist, ffilt, distance_threshold, redundancy_threshold)
+
         for (s,t) in all_distances.keys():
             if all_distances[(s,t)] == 1:
                 assert (s,t) in pairs_counted, f"({s},{t}) not in pairs_counted!"
@@ -166,8 +221,9 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None):
                 pairs_counted[(s,t)] = dist
 
                 if fout is not None:
-                    write_pair(shortest_paths, s, t, dist, fout, distances)
-
+                    total_distances = write_pair(shortest_paths, s, t, dist, fout, distances)
+                    if distance_threshold > 0 or redundancy_threshold > 0:
+                        write_filtered(shortest_paths, s, t, total_distances, dist, ffilt, distance_threshold, redundancy_threshold)
 
             remaining_pairs = reachable_pairs-set(pairs_counted.keys())
             print(f'{len(remaining_pairs)} remaining after distance {dist}.', flush=True)

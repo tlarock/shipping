@@ -33,6 +33,6 @@ with open(distance_file, 'r') as fin:
         u,v,dist = line.strip().split(',')
         shipping_dist[(u,v)] = float(dist)
 
-#output_file = '../results/interpolated_paths/iterative_paths_with_routes.txt'
-output_file = '/scratch/larock.t/shipping/results/interpolated_paths/iterative_paths_with_routes.txt'
-all_shortest_paths(G, routes, output_file=output_file, distances=shipping_dist)
+#output_file = '../results/interpolated_paths/iterative_paths_with_routes'
+output_file = '/scratch/larock.t/shipping/results/interpolated_paths/iterative_paths_with_routes'
+all_shortest_paths(G, routes, output_file=output_file, distances=shipping_dist, redundancy_threshold=1.0, distance_threshold=1.5)
