@@ -32,11 +32,11 @@ with open('/scratch/larock.t/shipping/results/interpolated_paths/iterative_paths
                 pair_counter = 0
 
         prev_pair = pair
-        
+
         if first: first = False
 
 
 with open('/scratch/larock.t/shipping/results/interpolated_paths/iterative_paths_filtered.txt', 'w') as fout:
     for pair in filtered_paths:
         for path in filtered_paths[pair]:
-            fout.write(','.join(path) + ',' + str(filtered_paths[pair][path]) + '\n')        
+            fout.write(','.join(path) + ',' + str(filtered_paths[pair][path]) + '\n')

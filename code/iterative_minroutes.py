@@ -25,12 +25,13 @@ def write_filtered(shortest_paths, s, t, total_distances, mr_dist, ffilt, distan
     filtered_paths = set()
     ## If there is only 1 path, we skip filtering
     if len(total_distances) > 1:
+        ## Filter based on distances
         min_dist = min(total_distances.values())
         for path in total_distances:
             if total_distances[path] > min_dist*distance_thresh:
                 filtered_paths.add(path)
 
-        ## Do redundancy filtering
+        ## Filter based on redundancy
         sorted_paths = sorted(total_distances.keys(), key=lambda p: len(p))
         max_path_len = len(sorted_paths[-1])
         for i in range(len(sorted_paths)):
