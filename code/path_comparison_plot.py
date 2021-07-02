@@ -33,6 +33,7 @@ route_lengths_per_pair_mr_filt = [] ## list of ints (should be all 1s)
 route_lengths_dist_mr_filt = [] ## list of ints
 path_lengths_dist_mr_filt = []
 routes_per_path_dist_filt = []
+routes_per_path_dist = []
 filtered_paths = dict()
 filtered_distances = []
 with open(scratch_base + 'iterative_paths_with_routes_filtered_dt-1.5_rt-1.0.txt', 'r') as fin:
@@ -64,7 +65,7 @@ with open(scratch_base + 'iterative_paths_with_routes_filtered_dt-1.5_rt-1.0.txt
                 pair_counter = 0
 
         prev_pair = pair
-        
+
         if first: first = False
 
 import pickle
