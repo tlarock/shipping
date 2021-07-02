@@ -18,34 +18,66 @@ def get_xy(dist, normed=False):
         y = y/y.sum()
     return x, y
 
+print("Reading shipping distances.")
 shipping_dist = dict()
 with open('/home/larock.t/git/shipping/data/port_shipping_distances.csv', 'r') as fin:
     for line in fin:
         u,v,dist = line.strip().split(',')
         shipping_dist[(u,v)] = float(dist)
 
-
+print("Computing filtered path stats.")
+scratch_base = '/scratch/larock.t/shipping/results/interpolated_paths/'
 ## Filtered paths
-with open('../results/interpolated_paths/iterative_paths_filtered_stats.pickle', 'rb') as fpickle:
-    num_paths_dist_mr_filt, route_lengths_dist_mr_filt, route_lengths_per_pair_mr_filt, path_lengths_dist_mr_filt = pickle.load(fpickle)
+num_paths_dist_mr_filt = [] ## list of ints
+route_lengths_per_pair_mr_filt = [] ## list of ints (should be all 1s)
+route_lengths_dist_mr_filt = [] ## list of ints
+path_lengths_dist_mr_filt = []
+routes_per_path_dist_filt = []
 filtered_paths = dict()
 filtered_distances = []
-num_paths = 0
-with open('../results/interpolated_paths/iterative_paths_with_routes_filtered_dt-1.5_rt-1.0.txt', 'r') as fin:
+with open(scratch_base + 'iterative_paths_with_routes_filtered_dt-1.5_rt-1.0.txt', 'r') as fin:
+    pair_counter = 0
+    total_pairs = 0
+    prev_pair = (-1,-1)
+    first = True
     for line in fin:
-        path, mr_dist, rt_dist, *_ = line.strip().split('|')
+        path, mr_dist, route_dist, *routes = line.strip().split('|')
+        routes_per_path_dist.append(len(routes))
         path = path.strip().split(',')
         dist = int(mr_dist)
-        filtered_paths.setdefault((path[0], path[-1]), dict())
-        filtered_paths[(path[0], path[-1])][tuple(path)] = dist
-        filtered_distances.append(float(rt_dist))
+        pair = (path[0], path[-1])
+        filtered_paths.setdefault(pair, dict())
+        filtered_paths[pair][tuple(path[0:len(path)-1])] = dist
+        filtered_distances.append(float(route_dist))
+        if pair != prev_pair and not first:
+            num_paths = len(filtered_paths[prev_pair])
+            num_paths_dist_mr_filt.append(num_paths)
+            route_lengths = [p for p in filtered_paths[prev_pair].values()]
+            route_lengths_dist_mr_filt += route_lengths
+            route_lengths_per_pair_mr_filt.append(len(set(route_lengths)))
+            path_lengths = [len(p)-1 for p in filtered_paths[prev_pair].keys()]
+            path_lengths_dist_mr_filt +=  path_lengths 
+            pair_counter += 1
+            total_pairs += 1
+            if pair_counter == 50_000:
+                print(f"{total_pairs} pairs processed.", flush=True)
+                pair_counter = 0
 
+        prev_pair = pair
+        
+        if first: first = False
+
+import pickle
+with open(scratch_base + 'iterative_paths_with_routes_stats.pickle', 'wb') as fpickle:
+    pickle.dump((num_paths_dist_mr_filt, route_lengths_dist_mr_filt, route_lengths_per_pair_mr_filt, path_lengths_dist_mr_filt, routes_per_path_dist), fpickle)
+
+print("Computing clique path stats.")
 ## Clique paths
-with open('../results/interpolated_paths/shortest_paths_clique.pickle', 'rb') as fpickle:
+with open(scratch_base + 'shortest_paths_clique.pickle', 'rb') as fpickle:
     paper_paths_dict = pickle.load(fpickle)
 gwdata = pd.read_csv('../data/original/Nodes_2015_country_degree_bc_B_Z_P.csv', encoding='latin-1' ) ## Just need to get id to name mapping
 port_mapping = dict(zip(gwdata.id.values,gwdata.port.values))
-with open('../results/interpolated_paths/clique_minroute_paths.pickle', 'rb') as fpickle:
+with open(scratch_base + 'clique_minroute_paths.pickle', 'rb') as fpickle:
     minimum_routes_sp = pickle.load(fpickle)
 num_paths_dist_cg = [] ## list of ints
 route_lengths_per_pair_cg = [] ## list of ints (should be all 1s)
@@ -76,9 +108,10 @@ for pair in minimum_routes_sp:
         clique_distances.append(d)
 
 ## Path graph paths
-with open('../results/interpolated_paths/shortest_paths_pathrep.pickle', 'rb') as fpickle:
+print("Computing path path stats.")
+with open(scratch_base + 'shortest_paths_pathrep.pickle', 'rb') as fpickle:
     pg_paths = pickle.load(fpickle)
-with open('../results/interpolated_paths/sp_pathrep_minroutes.pickle', 'rb') as fpickle:
+with open(scratch_base + 'sp_pathrep_minroutes.pickle', 'rb') as fpickle:
     minimum_routes = pickle.load(fpickle)
 num_paths_dist_pg = [] ## list of ints
 route_lengths_per_pair_pg = [] ## list of ints (should be all 1s)
@@ -103,6 +136,9 @@ for pair in pg_paths:
         pg_distances.append(d)
 
 
+print("Dumping stats.")
+with open(scratch_base + 'path_comparison_stats.pickle', 'wb') as fpickle:
+    pickle.dump((path_lengths_dist_mr_filt, path_lengths_dist_pg, path_lengths_dist_cg, filtered_distances, pg_distances, clique_distances, route_lengths_dist_mr_filt, route_lengths_dist_pg, route_lengths_dist_cg), fpickle)
 ## PLOTTING CODE ##
 nrows=1
 ncols=3
@@ -212,4 +248,4 @@ for normed in [True, False]:
         axi.set_xticks([0,5,10])
         axi.set_xticklabels([0,5,10], fontsize='small')
 
-plt.savefig('filteredVScgVSpg.pdf', bbox_inches='tight')
+plt.savefig(scratch_base + 'filteredVScgVSpg.pdf', bbox_inches='tight')
