@@ -1,4 +1,5 @@
 import networkx as nx
+import pandas as pd
 import pickle
 from collections import defaultdict
 
@@ -13,7 +14,8 @@ def remove_selfloops(path):
             i+=1
     return path
 
-with open('../results/interpolated_paths/iterative_paths_with_routes.txt', 'r') as fin:
+
+with open('/scratch/larock.t/shipping/results/interpolated_paths/iterative_paths_with_routes_filtered_dt-1.5_rt-1.0.txt', 'r') as fin:
 	minroute_paths = dict()
 	for line in fin:
 		path, mr_dist, rt_dist, *_ = line.strip().split('|')
@@ -78,10 +80,10 @@ for pair in paper_paths_dict:
 
         ## Check if the path is minimum-route by checking whether it appears
         ## in the unfiltered minimum-route paths
-        if path in minroute_paths[mpair]:
-            tpath = tuple(mpath)
-            route_lengths.append(minroute_paths[mpair][path])
-            minimum_routes_sp[mpair][tpath] = minroute_paths[mpair][path]
+        tpath = tuple(mpath)
+        if tpath in minroute_paths[mpair]:
+            route_lengths.append(minroute_paths[mpair][tpath])
+            minimum_routes_sp[mpair][tpath] = minroute_paths[mpair][tpath]
 
     route_lengths_dist += route_lengths
     route_lengths_per_pair.append(len(set(route_lengths)))
@@ -91,3 +93,6 @@ for pair in paper_paths_dict:
     if curr_count == 50_000:
         print(f'{total_node_pairs-total_count} remaining.')
         curr_count = 0
+
+with open('/scratch/larock.t/shipping/results/interpolated_paths/clique_minroute_paths.pickle', 'wb') as fpickle:
+    pickle.dump(minimum_routes_sp, fpickle)

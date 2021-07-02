@@ -4,18 +4,21 @@ num_paths_dist_mrr = [] ## list of ints
 route_lengths_per_pair_mrr = [] ## list of ints (should be all 1s)
 route_lengths_dist_mrr = [] ## list of ints
 path_lengths_dist_mrr = []
-with open('iterative_paths.txt', 'r') as fin:
+routes_per_path_dist = []
+with open('/scratch/larock.t/shipping/results/interpolated_paths/iterative_paths_with_routes.txt', 'r') as fin:
     pair_counter = 0
     total_pairs = 0
     prev_pair = (-1,-1)
     paths = dict()
     first = True
     for line in fin:
-        a = line.strip().split(',')
-        dist = int(a[-1])
-        pair = (a[0], a[-2])
+        path, mr_dist, route_dist, *routes = line.strip().split('|')
+        routes_per_path_dist.append(len(routes))
+        path = path.strip().split(',')
+        dist = int(mr_dist)
+        pair = (path[0], path[-1])
         paths.setdefault(pair, dict())
-        paths[pair][tuple(a[0:len(a)-1])] = dist
+        paths[pair][tuple(path[0:len(path)-1])] = dist
         if pair != prev_pair and not first:
             num_paths = len(paths[prev_pair])
             num_paths_dist_mrr.append(num_paths)
@@ -38,5 +41,5 @@ with open('iterative_paths.txt', 'r') as fin:
 
 import pickle
 print("Pickling distributions.", flush=True)
-with open('iterative_paths_stats.pickle', 'wb') as fpickle:
-    pickle.dump((num_paths_dist_mrr, route_lengths_dist_mrr, route_lengths_per_pair_mrr, path_lengths_dist_mrr), fpickle)
+with open('/scratch/larock.t/shipping/results/interpolated_paths/iterative_paths_with_routes_stats.pickle', 'wb') as fpickle:
+    pickle.dump((num_paths_dist_mrr, route_lengths_dist_mrr, route_lengths_per_pair_mrr, path_lengths_dist_mrr, routes_per_path_dist), fpickle)
