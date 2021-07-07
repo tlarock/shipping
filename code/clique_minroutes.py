@@ -14,8 +14,8 @@ def remove_selfloops(path):
             i+=1
     return path
 
-
-with open('/scratch/larock.t/shipping/results/interpolated_paths/iterative_paths_with_routes_filtered_dt-1.5_rt-1.0.txt', 'r') as fin:
+print("Reading minimum route paths.", flush=True)
+with open('/scratch/larock.t/shipping/results/interpolated_paths/iterative_paths_with_routes.txt', 'r') as fin:
 	minroute_paths = dict()
 	for line in fin:
 		path, mr_dist, rt_dist, *_ = line.strip().split('|')
@@ -24,6 +24,7 @@ with open('/scratch/larock.t/shipping/results/interpolated_paths/iterative_paths
 		minroute_paths.setdefault((path[0], path[-1]), dict())
 		minroute_paths[(path[0], path[-1])][tuple(path)] = dist
 
+print("Reading clique graph paths.", flush=True)
 with open('../results/interpolated_paths/shortest_paths_clique.pickle', 'rb') as fpickle:
     paper_paths_dict = pickle.load(fpickle)
 
@@ -54,6 +55,7 @@ with open('../data/all_routes_2015.ngram', 'r') as fin:
                     if path[i-1] != path[j]:
                         directed_clique_edges.add((path[i-1], path[j]))
 
+print("Starting computation.", flush=True)
 route_lengths_per_pair = []
 route_lengths_dist = []
 curr_count = 0
@@ -91,7 +93,7 @@ for pair in paper_paths_dict:
     curr_count+=1
     total_count+=1
     if curr_count == 50_000:
-        print(f'{total_node_pairs-total_count} remaining.')
+        print(f'{total_node_pairs-total_count} remaining.', flush=True)
         curr_count = 0
 
 with open('/scratch/larock.t/shipping/results/interpolated_paths/clique_minroute_paths.pickle', 'wb') as fpickle:
