@@ -36,7 +36,7 @@ with open(distance_file, 'r') as fin:
 #output_file = '../results/interpolated_paths/iterative_paths_with_routes'
 output_file = '/scratch/larock.t/shipping/results/interpolated_paths/iterative_paths_with_routes'
 redundancy_thresholds = [1.0]
-distance_thresholds = [1.05, 1.15, 1.25]
+distance_thresholds = [1.05, 1.15, 1.25, 1.5]
 all_shortest_paths(G, routes, output_file=output_file, distances=shipping_dist, redundancy_thresholds=redundancy_thresholds, distance_thresholds=distance_thresholds)
 
 #print(f'Running with distance_threshold=1.05', flush=True)
