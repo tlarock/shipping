@@ -37,7 +37,7 @@ routes_per_path_dist = []
 filtered_paths = dict()
 filtered_distances = []
 rt_thresh = 1.0
-dt_thresh = 1.5
+dt_thresh = 1.25
 with open(scratch_base + f'iterative_paths_with_routes_filtered_dt-{dt_thresh}_rt-{rt_thresh}.txt', 'r') as fin:
     pair_counter = 0
     total_pairs = 0
