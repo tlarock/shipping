@@ -82,18 +82,22 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
                         all  minimum-routes paths from every source to every reahcable
                         target in G.
     '''
-    def _add_open_walk(route, route_id, shortest_paths,pairs_counted):
+    def _add_path(shortest_paths, source, target, path, route_id):
+        shortest_paths[1].setdefault(source, dict())
+        shortest_paths[1][source].setdefault(target, dict())
+        path_tup = tuple(path)
+        shortest_paths[1][source][target].setdefault(path_tup, set())
+        route_list = [f'{route_id}:{len(path)-1}']
+        shortest_paths[1][source][target][path_tup].add(tuple(route_list))
+
+    def _add_open_walk(route, route_id, shortest_paths, pairs_counted):
         for i in range(len(route)):
             for j in range(i+1, len(route)):
                 if route[i] != route[j]:
                     path = route[i:j+1]
-                    ## If the target appears more than once ignore this  path
+                    ## Add the path as long as the target appears only once
                     if path.count(route[j]) == 1:
-                        shortest_paths[1].setdefault(route[i], dict())
-                        shortest_paths[1][route[i]].setdefault(route[j], dict())
-                        shortest_paths[1][route[i]][route[j]].setdefault(tuple(path), set())
-                        route_list = [f'{route_id}:{len(path)-1}']
-                        shortest_paths[1][route[i]][route[j]][tuple(path)].add(tuple(route_list))
+                        _add_path(shortest_paths, route[i], route[j], path, route_id)
                         pairs_counted[(route[i], route[j])] = dist
 
     def _add_closed_walk(route, route_id, shortest_paths, pairs_counted):
@@ -111,13 +115,11 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
                             path += [route[0]]
                         elif j > 0:
                             path += route[1:j+1]
-                    shortest_paths[1].setdefault(route[i], dict())
-                    shortest_paths[1][route[i]].setdefault(route[j], dict())
-                    shortest_paths[1][route[i]][route[j]].setdefault(tuple(path), set())
-                    route_list = [f'{route_id}:{len(path)-1}']
-                    shortest_paths[1][route[i]][route[j]][tuple(path)].add(tuple(route_list))
-                    pairs_counted[(route[i], route[j])] = dist
 
+                    ## Add the path as long as the target appears only once
+                    if path.count(route[j]) == 1:
+                        _add_path(shortest_paths, route[i], route[j], path, route_id)
+                        pairs_counted[(route[i], route[j])] = dist
 
     assert min([rt for _,_, edat in G.edges(data=True) for rt in edat['routes']]) > 0, "Route labels must begin with 1."
     if (distance_threshold > 0 or redundancy_threshold > 0):
@@ -204,6 +206,9 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
                                 shortest_paths[dist][s].setdefault(t, dict())
                                 path = p1[0:] + p2[1:]
                                 shortest_paths[dist][s][t].setdefault(path, list())
+                                ## Assert that the target only appears once in the path.
+                                ## NOTE: This will slow down the computation, but I want to make sure it is right.
+                                assert path.count(t) == 1, f'path.count({t}) is {path.count(t)} in path {path}.'
                                 for r1 in shortest_paths[dist-1][s][w][p1]:
                                     for r2 in shortest_paths[1][w][t][p2]:
                                         route_list = r1+r2
@@ -219,6 +224,8 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
                 assert found_t, f"Did not find t {t} from s {s}."
                 assert t in shortest_paths[dist][s], f"shortest_paths[{dist}[{s}] does not contain {t}."
                 assert len(shortest_paths[dist][s][t]) > 0, f"No paths found between {s} and {t}."
+
+                ## Add (s,t) to pairs_counted
                 pairs_counted[(s,t)] = dist
 
                 if fout is not None:
