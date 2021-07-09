@@ -186,6 +186,7 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
                     for (distance_threshold, redundancy_threshold) in dr_thresholds:
                         write_filtered(shortest_paths, s, t, total_distances, dist, ffilt[distance_threshold][redundancy_threshold], distance_threshold, redundancy_threshold)
 
+        ## Ensure we've got paths for every pair we should
         for (s,t) in all_distances.keys():
             if all_distances[(s,t)] == 1:
                 assert (s,t) in pairs_counted, f"({s},{t}) not in pairs_counted!"
