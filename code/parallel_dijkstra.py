@@ -279,7 +279,7 @@ def compute_paths(G, source, target, prev_dict, all_routes, distances, edge_indi
 
     return target, sp, sp_routes
 
-def all_shortest_paths(G, all_routes, num_cpus=1, log_every=50000, print_st=False):
+def all_shortest_paths(G, all_routes, num_cpus=1, log_every=50000, print_st=False, check_precomp=True, G_indirect=None, edge_indices=None):
     '''
     Accepts a route-labeled graph G and computes all pairs minimum-route paths
     for nodes in G. A minimum-route path should exist between every pair (source, target)
@@ -311,25 +311,26 @@ def all_shortest_paths(G, all_routes, num_cpus=1, log_every=50000, print_st=Fals
             routes_by_node[node].update(set([route for route in G[node][neighbor]['routes']]))
 
     ## Edge indices + clique distances
-    G_indirect = nx.DiGraph()
-    edge_indices = dict()
-    for route_id, route in enumerate(all_routes, start=1):
-        edge_indices[route_id] = dict()
-        for i in range(1, len(route)):
-            edge = (route[i-1], route[i])
-            edge_indices[route_id].setdefault(edge, set())
-            edge_indices[route_id][edge].add(i-1)
-
-        if route[0] != route[-1]:
-            for i in range(len(route)):
-                for j in range(i+1, len(route)):
-                    if route[i] != route[j]:
-                        G_indirect.add_edge(route[i], route[j])
-        else:
-            for i in range(len(route)):
-                for j in range(len(route)):
-                    if route[i] != route[j]:
-                        G_indirect.add_edge(route[i], route[j])
+    if G_indirect is None or edge_indices is None:
+        G_indirect = nx.DiGraph()
+        edge_indices = dict()
+        for route_id, route in enumerate(all_routes, start=1):
+            edge_indices[route_id] = dict()
+            for i in range(1, len(route)):
+                edge = (route[i-1], route[i])
+                edge_indices[route_id].setdefault(edge, set())
+                edge_indices[route_id][edge].add(i-1)
+            if check_precomp:
+                if route[0] != route[-1]:
+                    for i in range(len(route)):
+                        for j in range(i+1, len(route)):
+                            if route[i] != route[j]:
+                                G_indirect.add_edge(route[i], route[j])
+                else:
+                    for i in range(len(route)):
+                        for j in range(len(route)):
+                            if route[i] != route[j]:
+                                G_indirect.add_edge(route[i], route[j])
 
     ## Compute all pairs min route paths
     shortest_paths = defaultdict(dict)
@@ -339,9 +340,10 @@ def all_shortest_paths(G, all_routes, num_cpus=1, log_every=50000, print_st=Fals
             print(f'Source: {source}', flush=True)
 
         distances, prev_dict = route_dijkstra(G, source, all_routes,  routes_by_node)
-        precomp_distances = nx.single_source_shortest_path_length(G_indirect, source)
-        for target in distances:
-            assert distances[target] == precomp_distances[target], f"Distances for pair {(source, target)} do not match expectation (distances[{target}]: {distances[target]}, precomp_distances[{target}]: {precomp_distances[target]}."
+        if check_precomp:
+            precomp_distances = nx.single_source_shortest_path_length(G_indirect, source)
+            for target in distances:
+                assert distances[target] == precomp_distances[target], f"Distances for pair {(source, target)} do not match expectation (distances[{target}]: {distances[target]}, precomp_distances[{target}]: {precomp_distances[target]}."
         if num_cpus < 2:
             for target in prev_dict:
                 if print_st:
