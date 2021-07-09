@@ -124,7 +124,10 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
     if (len(distance_thresholds) > 0 or len(redundancy_thresholds) > 0):
         assert output_file != '', "Filtering only makes sense if output_file is specified."
         assert len(distance_thresholds) > 0 and len(redundancy_thresholds) > 0, 'Include at least 1 value for each threshold for filtering.'
-        dr_thresholds = list(zip(distance_thresholds, redundancy_thresholds))
+        dr_thresholds = []
+        for dt in distance_thresholds:
+            for rt in redundancy_thresholds:
+                dr_thresholds.append((dt,rt))
     ## Get all reachable pairs
     reachable_pairs = set()
     for node in G.nodes():
