@@ -29,15 +29,10 @@ filtered_stats = {
     'num_paths':[],
     'route_lengths':[],
     'path_lengths':[],
-    'distances':[]
+    'distances':[],
+    'routes_per_path':[]
 }
-#num_paths_dist_mr_filt = [] ## list of ints
-#route_lengths_dist_mr_filt = [] ## list of ints
-#path_lengths_dist_mr_filt = []
-#routes_per_path_dist_filt = []
-#routes_per_path_dist = []
 filtered_paths = dict()
-#filtered_distances = []
 import sys
 argv = sys.argv
 if len(argv) > 1:
@@ -54,13 +49,13 @@ with open(scratch_base + f'iterative_paths_with_routes_filtered_dt-{dt_thresh}_r
     first = True
     for line in fin:
         path, mr_dist, route_dist, *routes = line.strip().split('|')
-        routes_per_path_dist.append(len(routes))
         path = path.strip().split(',')
         dist = int(mr_dist)
         pair = (path[0], path[-1])
         filtered_paths.setdefault(pair, dict())
         filtered_paths[pair][tuple(path)] = dist
         filtered_stats['distances'].append(float(route_dist))
+        filtered_stats['routes_per_path'].append(len(routes))
         if pair != prev_pair and not first:
             num_paths = len(filtered_paths[prev_pair])
             #num_paths_dist_mr_filt.append(num_paths)
