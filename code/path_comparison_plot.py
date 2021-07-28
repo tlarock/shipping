@@ -67,7 +67,7 @@ with open(scratch_base + f'iterative_paths_with_routes_filtered_dt-{dt_thresh}_r
             filtered_stats['route_lengths'] += route_lengths
             path_lengths = [len(p)-1 for p in filtered_paths[prev_pair].keys()]
             #path_lengths_dist_mr_filt +=  path_lengths 
-            filtered_paths['path_lengths'] += path_lengths
+            filtered_stats['path_lengths'] += path_lengths
             pair_counter += 1
             total_pairs += 1
             if pair_counter == 50_000:
@@ -88,7 +88,7 @@ route_lengths = list(filtered_paths[prev_pair].values())
 filtered_stats['route_lengths'] += route_lengths
 path_lengths = [len(p)-1 for p in filtered_paths[prev_pair].keys()]
 #path_lengths_dist_mr_filt +=  path_lengths 
-filtered_paths['path_lengths'] += path_lengths
+filtered_stats['path_lengths'] += path_lengths
 
 import pickle
 with open(scratch_base + f'iterative_paths_with_routes_filtered_dt-{dt_thresh}_rt-{rt_thresh}_stats.pickle', 'wb') as fpickle:
@@ -161,7 +161,7 @@ for pair in pg_paths:
     #route_lengths_dist_pg += route_lengths
     path_stats['route_lengths'] += route_lengths
     path_lengths = [len(next(iter(pg_paths[pair])))-1]*len(pg_paths[pair]) 
-    path_lengths_dist_pg +=  path_lengths
+    #path_lengths_dist_pg +=  path_lengths
     path_stats['path_lengths'] += path_lengths
 
 pg_distances =  []
