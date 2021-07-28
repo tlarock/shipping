@@ -23,9 +23,9 @@ with open('../data/all_routes_2015.ngram', 'r') as fin:
 print("Read edgelist.", flush=True)
 
 
-distance_thresh = 1.0
 interpolated_paths_dict = dict()
 num_paths = 0
+#distance_thresh=1.0
 #with open(f'../results/interpolated_paths/iterative_paths_with_routes_filtered_dt-{distance_thresh}_rt-1.0.txt', 'r') as fin:
 with open(f'../results/interpolated_paths/iterative_paths_with_routes.txt', 'r') as fin:
     for line in fin:
@@ -36,7 +36,7 @@ with open(f'../results/interpolated_paths/iterative_paths_with_routes.txt', 'r')
         interpolated_paths_dict[(path[0], path[-1])][tuple(path)] = dist
         num_paths += 1
 
-print("Read paths.", flush=True)
+print(f"Read {num_paths} paths.", flush=True)
 
 paper_B = True
 gwdata = pd.read_csv('../data/original/Nodes_2015_country_degree_bc_B_Z_P.csv', encoding='latin-1' )
