@@ -4,7 +4,7 @@ distance_thresh = 2.0
 redundancy_thresh = 1.0
 scratch_base = '/scratch/larock.t/shipping/results/interpolated_paths/'
 with open(scratch_base + 'iterative_paths_with_routes.txt', 'r') as fin:
-    with open(scratch_base + f'iterative_paths_with_routes_filtered_dt-{distance_thresh}_rt-{redundancy_thresh}.txt', 'w') as fout:
+    with open(scratch_base + f'iterative_paths_with_routes_filtered_dt-{distance_thresh}_rt-{redundancy_thresh}_faster.txt', 'w') as fout:
         filtered_paths = dict()
         total_distances = dict()
         pair_counter = 0
@@ -38,6 +38,8 @@ with open(scratch_base + 'iterative_paths_with_routes.txt', 'r') as fin:
                             del filtered_paths[prev_dist][prev_pair[0]][prev_pair[1]][path]
                             del total_distances[prev_pair][path]
                 write_filtered(filtered_paths, prev_pair[0], prev_pair[1], total_distances[prev_pair], prev_dist, fout, distance_thresh, redundancy_thresh)
+                del filtered_paths[prev_dist][prev_pair[0]][prev_pair[1]]
+                del total_distances[prev_pair]
                 pair_counter += 1
                 total_pairs += 1
                 if pair_counter == 10_000:
