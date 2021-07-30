@@ -23,7 +23,7 @@ with open('/scratch/larock.t/shipping/results/interpolated_paths/iterative_paths
         dist = int(mr_dist)
         pair = (path[0], path[-1])
         paths.setdefault(pair, dict())
-        paths[pair][tuple(path[0:len(path)-1])] = dist
+        paths[pair][tuple(path)] = dist
         if pair != prev_pair and not first:
             num_paths = len(paths[prev_pair])
             #num_paths_dist_mrr.append(num_paths)
@@ -34,7 +34,7 @@ with open('/scratch/larock.t/shipping/results/interpolated_paths/iterative_paths
             #route_lengths_dist_mrr += route_lengths
             stats['route_lengths'] += route_lengths
             path_lengths = [len(p)-1 for p in paths[prev_pair].keys()]
-            path_lengths_dist_mrr +=  path_lengths
+            #path_lengths_dist_mrr +=  path_lengths
             stats['path_lengths'] += path_lengths
             del paths[prev_pair]
 
