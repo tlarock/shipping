@@ -168,3 +168,62 @@ def route_edge_betweenness_from_file(filename):
     ## Compute betweenness by summing over all pairs for each edge
     route_betweenness = {edge:sum(edge_to_pair_dict[edge].values()) for edge in edge_to_pair_dict}
     return route_betweenness
+
+
+def route_path_betweenness_from_file(filename, k):
+    '''
+    Computes route betweenness for paths by reading file filename.
+
+    Uses dictionaries for computations.
+    '''
+    pair_counter = 0
+    total_pairs = 0
+    first = True
+    path_to_pair_dict = dict()
+    prev_pair = (-1, -1)
+    filtered_paths = dict()
+    with open(filename, 'r') as fin:
+        for line in fin:
+            path, *_ = line.strip().split('|')
+            path = path.strip().split(',')
+            pair = (path[0], path[-1])
+            filtered_paths.setdefault(pair, list())
+            filtered_paths[pair].append(path)
+            if pair != prev_pair and not first:
+                paths_to_norm = set()
+                for path in filtered_paths[prev_pair]:
+                    for i in range(0, len(path)-k):
+                        kpath = tuple(path[i:i+k+1])
+                        path_to_pair_dict.setdefault(kpath, dict())
+                        path_to_pair_dict[kpath].setdefault(prev_pair, 0)
+                        path_to_pair_dict[kpath][prev_pair] += 1
+                        paths_to_norm.add(kpath)
+                ## Normalize
+                for path in paths_to_norm:
+                    path_to_pair_dict[path][prev_pair] /= len(filtered_paths[prev_pair])
+                pair_counter += 1
+                total_pairs += 1
+                if pair_counter == 150_000:
+                    print(f"{total_pairs} processed.", flush=True)
+                    pair_counter = 0
+
+            prev_pair = pair
+            if first: first = False
+
+    ## Handle the last pair
+    for path in filtered_paths[prev_pair]:
+        paths_to_norm = set()
+        for i in range(0, len(path)-k):
+            kpath = tuple(path[i:i+k+1])
+            path_to_pair_dict.setdefault(kpath, dict())
+            path_to_pair_dict[kpath].setdefault(prev_pair, 0)
+            path_to_pair_dict[kpath][prev_pair] += 1
+            paths_to_norm.add(kpath)
+
+    ## Normalize
+    for path in paths_to_norm:
+        path_to_pair_dict[path][prev_pair] /= len(filtered_paths[prev_pair])
+
+    ## Compute betweenness by summing over all pairs for each path 
+    route_betweenness = {path:sum(path_to_pair_dict[path].values()) for path in path_to_pair_dict}
+    return route_betweenness
