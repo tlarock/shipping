@@ -40,27 +40,38 @@ def write_filtered(shortest_paths, s, t, total_distances, mr_dist, open_outfile,
                 ## a direct edge (we will always keep those)
                 continue
 
-            ## Remove the source and target
-            compare_path = list(shorter_path)
-            del compare_path[0], compare_path[-1]
+            if redundancy_thresh == 1.0:
+                ## If the redundancy threhold is the whole path,
+                ## we don't need to remove the endpoints.
+                compare_path = shorter_path
+            else:
+                ## Remove the source and target
+                compare_path = list(shorter_path)
+                del compare_path[0], compare_path[-1]
+
             ## Check against all longer paths
             for j in range(i+1, len(sorted_paths)):
                 longer_path = sorted_paths[j]
                 if len(longer_path) == len(shorter_path) or longer_path in filtered_paths:
                     continue
 
-                longer_cmp_path = list(longer_path)
-                del longer_cmp_path[0], longer_cmp_path[-1]
+                if redundancy_thresh == 1.0:
+                    longer_cmp_path = longer_path
+                else:
+                    longer_cmp_path = list(longer_path)
+                    del longer_cmp_path[0], longer_cmp_path[-1]
+
                 if (len(set(longer_cmp_path).intersection(compare_path)) / len(compare_path)) >= redundancy_thresh:
                     filtered_paths.add(tuple([c for c in longer_path]))
 
-
-        ## Filter based on distances
-        available_paths = [path for path in total_distances if path not in filtered_paths]
-        min_dist = min([total_distances[path] for path in available_paths])
-        for path in available_paths:
-            if total_distances[path] > min_dist*distance_thresh:
-                filtered_paths.add(path)
+        ## Filter based on distances (as long as there
+        ## are paths remaining to filter)
+        if len(filtered_paths) < len(total_distances)-1:
+            available_paths = [path for path in total_distances if path not in filtered_paths]
+            min_dist = min([total_distances[path] for path in available_paths])
+            for path in available_paths:
+                if total_distances[path] > min_dist*distance_thresh:
+                    filtered_paths.add(path)
 
         assert len(filtered_paths) != len(shortest_paths[mr_dist][s][t]), f'All paths filtered for pair {(s,t)} with dt={distance_thresh}, rt={redundancy_thresh}.\nshortest_paths:{shortest_paths[mr_dist][s][t]}\nfiltered_paths:{filtered_paths}\n'
     for path, route_list in shortest_paths[mr_dist][s][t].items():
