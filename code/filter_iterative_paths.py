@@ -30,13 +30,6 @@ with open(scratch_base + 'iterative_paths_with_routes.txt', 'r') as fin:
             filtered_paths[dist][pair[0]][pair[1]][tuple(path)] = list_routes
 
             if pair != prev_pair and not first:
-                if distance_thresh <= 1.0:
-                    min_distance_path = min(total_distances[prev_pair].items(), key = lambda kv: kv[1])[0]
-                    all_paths = list(filtered_paths[prev_dist][prev_pair[0]][prev_pair[1]].keys())
-                    for path in all_paths:
-                        if path != min_distance_path:
-                            del filtered_paths[prev_dist][prev_pair[0]][prev_pair[1]][path]
-                            del total_distances[prev_pair][path]
                 write_filtered(filtered_paths, prev_pair[0], prev_pair[1], total_distances[prev_pair], prev_dist, fout, distance_thresh, redundancy_thresh)
                 del filtered_paths[prev_dist][prev_pair[0]][prev_pair[1]]
                 del total_distances[prev_pair]
@@ -51,12 +44,4 @@ with open(scratch_base + 'iterative_paths_with_routes.txt', 'r') as fin:
             if first: first = False
 
         ## Handle last pair
-        if distance_thresh <= 1.0:
-            min_distance_path = min(total_distances[prev_pair].items(), key = lambda kv: kv[1])[0]
-            all_paths = list(filtered_paths[prev_dist][prev_pair[0]][prev_pair[1]].keys())
-            for path in all_paths:
-                if path != min_distance_path:
-                    del filtered_paths[prev_dist][prev_pair[0]][prev_pair[1]][path]
-                    del total_distances[prev_pair][path]
-
         write_filtered(filtered_paths, prev_pair[0], prev_pair[1], total_distances[prev_pair], dist, fout, distance_thresh, redundancy_thresh)

@@ -21,17 +21,12 @@ def write_pair(shortest_paths, s, t, mr_dist, open_outfile, distances):
     return total_distances
 
 def write_filtered(shortest_paths, s, t, total_distances, mr_dist, open_outfile, distance_thresh, redundancy_thresh):
-    ## Do distance filtering
     filtered_paths = set()
     ## If there is only 1 path, we skip filtering
     if len(total_distances) > 1:
-        ## Filter based on distances
-        min_dist = min(total_distances.values())
-        for path in total_distances:
-            if total_distances[path] > min_dist*distance_thresh:
-                filtered_paths.add(path)
-
-        ## Filter based on redundancy
+        ## Filter based on redundancy first
+        ## This is important because the minimum
+        ## distance path is redundant in some cases
         sorted_paths = sorted(total_distances.keys(), key=lambda p: len(p))
         max_path_len = len(sorted_paths[-1])
         for i in range(len(sorted_paths)):
@@ -58,7 +53,16 @@ def write_filtered(shortest_paths, s, t, total_distances, mr_dist, open_outfile,
                 del longer_cmp_path[0], longer_cmp_path[-1]
                 if (len(set(longer_cmp_path).intersection(compare_path)) / len(compare_path)) >= redundancy_thresh:
                     filtered_paths.add(tuple([c for c in longer_path]))
-    assert len(filtered_paths) != len(shortest_paths[mr_dist][s][t]), f'All paths filtered for pair {(s,t)} with dt={distance_thresh}, rt={redundancy_thresh}.\nshortest_paths:{shortest_paths[mr_dist][s][t]}\nfiltered_paths:{filtered_paths}\n'
+
+
+        ## Filter based on distances
+        available_paths = [path for path in total_distances if path not in filtered_paths]
+        min_dist = min([total_distances[path] for path in available_paths])
+        for path in available_paths:
+            if total_distances[path] > min_dist*distance_thresh:
+                filtered_paths.add(path)
+
+        assert len(filtered_paths) != len(shortest_paths[mr_dist][s][t]), f'All paths filtered for pair {(s,t)} with dt={distance_thresh}, rt={redundancy_thresh}.\nshortest_paths:{shortest_paths[mr_dist][s][t]}\nfiltered_paths:{filtered_paths}\n'
     for path, route_list in shortest_paths[mr_dist][s][t].items():
         if path not in filtered_paths:
             open_outfile.write(','.join(path) + '|' + str(mr_dist) + '|' + str(total_distances[path]) + '|' + '|'.join([','.join(map(str, r)) for r in route_list]) + '\n')
