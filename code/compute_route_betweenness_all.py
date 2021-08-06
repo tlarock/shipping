@@ -4,10 +4,13 @@ import numpy as np
 from route_betweenness import route_node_betweenness_from_file, route_edge_betweenness_from_file
 
 scratch_base = '/scratch/larock.t/shipping/'
-filename = scratch_base + 'results/interpolated_paths/iterative_paths_with_routes.txt'
-alpha = 'all'
+#filename = scratch_base + 'results/interpolated_paths/iterative_paths_with_routes.txt'
+filename = scratch_base + 'results/interpolated_paths/iterative_paths_with_routes_filtered_dt-{}_rt-1.0.txt'
+#alpha = 'all'
+alpha  = 2.0
+filename = filename.format(alpha)
 ## Read node betweenness
-with open(scratch_base + 'results/interpolated_paths/route_node_betweenness_fromfile.pickle', 'rb') as fpickle:
+with open(scratch_base + 'results/interpolated_paths/route_node_betweenness_all.pickle', 'rb') as fpickle:
     rb = pickle.load(fpickle)
 print("Read node betweenness.", flush=True)
 ## Compute route betweenness
@@ -21,7 +24,7 @@ with open(scratch_base + 'results/interpolated_paths/route_node_betweenness_all.
 print("Dumped results.", flush=True)
 
 ## Read edge betweenness
-with open(scratch_base + 'results/interpolated_paths/route_edge_betweenness_fromfile.pickle', 'rb') as fpickle:
+with open(scratch_base + 'results/interpolated_paths/route_edge_betweenness_all.pickle', 'rb') as fpickle:
     rb = pickle.load(fpickle)
 print("Read edge betweenness", flush=True)
 route_betweenness = route_edge_betweenness_from_file(filename)

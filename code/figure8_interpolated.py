@@ -27,10 +27,10 @@ interpolated_paths_dict = dict()
 num_paths = 0
 report_count = 0
 report_interval = 100_000
-#distance_thresh=1.0
-#with open(f'../results/interpolated_paths/iterative_paths_with_routes_filtered_dt-{distance_thresh}_rt-1.0.txt', 'r') as fin:
 scratch_base = '/scratch/larock.t/shipping/'
-with open(scratch_base + f'results/interpolated_paths/iterative_paths_with_routes.txt', 'r') as fin:
+#with open(scratch_base + f'results/interpolated_paths/iterative_paths_with_routes.txt', 'r') as fin:
+distance_thresh=2.0
+with open(scratch_base + f'results/interpolated_paths/iterative_paths_with_routes_filtered_dt-{distance_thresh}_rt-1.0.txt', 'r') as fin:
     for line in fin:
         path, mr_dist, rt_dist, *_ = line.strip().split('|')
         path = path.strip().split(',')
@@ -199,5 +199,5 @@ plot_vals = {
 
 import pickle
 print("Dumping stats.", flush=True)
-with open(scratch_base + f'results/interpolated_paths/core_plot_vals_allpaths.pickle', 'wb') as fpickle:
+with open(scratch_base + f'results/interpolated_paths/core_plot_vals_dt-{distance_thresh}.pickle', 'wb') as fpickle:
     pickle.dump(plot_vals, fpickle)
