@@ -37,7 +37,7 @@ total_node_pairs = len(pg_paths)
 minimum_routes = defaultdict(dict)
 for pair in pg_paths:
     route_lengths = []
-    for path in pg_paths[pair]:        
+    for path in pg_paths[pair]:
         ## Check if the path is minimum-route by checking whether it appears
         ## in the unfiltered minimum-route paths
         tpath = tuple(path)
@@ -53,6 +53,6 @@ for pair in pg_paths:
     if curr_count == 50_000:
         print(f'{total_node_pairs-total_count} remaining.')
         curr_count = 0
-        
+
 with open('/scratch/larock.t/shipping/results/interpolated_paths/sp_pathrep_minroutes.pickle', 'wb') as fpickle:
     pickle.dump(minimum_routes, fpickle)

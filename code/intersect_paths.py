@@ -123,7 +123,7 @@ with open('/scratch/larock.t/shipping/results/interpolated_paths/iterative_paths
                     minroutes_cg[prev_pair][tpath] = number_of_routes
 
             ## PATH GRAPH PATHS
-            for path in pg_paths[prev_pair]:        
+            for path in pg_paths[prev_pair]:
                 ## Check if the path is minimum-route by checking whether it appears
                 ## in the unfiltered minimum-route paths
                 tpath = tuple(path)
@@ -149,8 +149,8 @@ with open('/scratch/larock.t/shipping/results/interpolated_paths/iterative_paths
                 pair_counter = 0
 
         prev_pair = pair
-        
-        if first: first = False	
+
+        if first: first = False
 
 
 ## Need to handle the last pair...TODO: Turn these into functions so we don't just copy and paste!
@@ -189,7 +189,7 @@ for path in paper_paths_dict[mpair]:
         minroutes_cg[prev_pair][tpath] = number_of_routes
 
 ## PATH GRAPH PATHS
-for path in pg_paths[prev_pair]:        
+for path in pg_paths[prev_pair]:
     ## Check if the path is minimum-route by checking whether it appears
     ## in the unfiltered minimum-route paths
     tpath = tuple(path)
