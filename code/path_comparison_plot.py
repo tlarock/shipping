@@ -58,15 +58,11 @@ with open(scratch_base + f'iterative_paths_with_routes_filtered_dt-{dt_thresh}_r
         filtered_stats['routes_per_path'].append(len(routes))
         if pair != prev_pair and not first:
             num_paths = len(filtered_paths[prev_pair])
-            #num_paths_dist_mr_filt.append(num_paths)
             filtered_stats['num_paths'].append(num_paths)
-            #route_lengths = [next(iter(filtered_paths[prev_pair].values()))]
             ## Compute over _all_ paths (same for all 4 path datasets)
             route_lengths = [p for p in filtered_paths[prev_pair].values()]
-            #route_lengths_dist_mr_filt += route_lengths
             filtered_stats['route_lengths'] += route_lengths
             path_lengths = [len(p)-1 for p in filtered_paths[prev_pair].keys()]
-            #path_lengths_dist_mr_filt +=  path_lengths 
             filtered_stats['path_lengths'] += path_lengths
             pair_counter += 1
             total_pairs += 1
@@ -81,13 +77,9 @@ with open(scratch_base + f'iterative_paths_with_routes_filtered_dt-{dt_thresh}_r
 ## Do the last pair!
 num_paths = len(filtered_paths[prev_pair])
 filtered_stats['num_paths'].append(num_paths)
-#num_paths_dist_mr_filt.append(num_paths)
-#route_lengths = [next(iter(filtered_paths[prev_pair].values()))]
 route_lengths = list(filtered_paths[prev_pair].values())
-#route_lengths_dist_mr_filt += route_lengths
 filtered_stats['route_lengths'] += route_lengths
 path_lengths = [len(p)-1 for p in filtered_paths[prev_pair].keys()]
-#path_lengths_dist_mr_filt +=  path_lengths 
 filtered_stats['path_lengths'] += path_lengths
 
 import pickle
@@ -114,15 +106,9 @@ for pair in paper_paths_dict:
     clique_stats['num_paths'].append(num_paths)
     mpair = (port_mapping[pair[0]], port_mapping[pair[1]])
     if mpair in minimum_routes_sp:
-        #route_lengths = [min([p for p in minimum_routes_sp[mpair].values()])]
         route_lengths = [p for p in minimum_routes_sp[mpair].values()]
-        #route_lengths_dist_cg += route_lengths
-        #route_lengths_per_pair_cg.append(len(set(route_lengths)))
         clique_stats['route_lengths'] += route_lengths
-    #path_lengths = [len(p) for p in paper_paths_dict[pair]]
-    #path_lengths = [len(next(iter(paper_paths_dict[pair])))-1]
-    path_lengths = [len(next(iter(paper_paths_dict[pair])))-1]*len(paper_paths_dict[pair]) 
-    #path_lengths_dist_cg +=  path_lengths
+    path_lengths = [len(next(iter(paper_paths_dict[pair])))-1]*len(paper_paths_dict[pair])
     clique_stats['path_lengths'] += path_lengths
 
 clique_distances =  []
@@ -134,8 +120,39 @@ for pair in minimum_routes_sp:
         d = 0.0
         for i in range(1, len(path)):
             d += shipping_dist[path[i-1], path[i]]
-        #clique_distances.append(d)
         clique_stats['distances'].append(d)
+
+
+## coroute graph paths
+print("Computing coroute path stats.", flush=True)
+coroute_stats = {
+    'num_paths':[],
+    'route_lengths':[],
+    'path_lengths':[],
+    'distances':[]
+}
+
+with open(scratch_base + 'shortest_paths_coroute.pickle', 'rb') as fpickle:
+    coroute_paths = pickle.load(fpickle)
+with open(scratch_base + 'coroute_minroute_paths.pickle', 'rb') as fpickle:
+    minimum_routes = pickle.load(fpickle)
+
+for pair in coroute_paths:
+    num_paths = len(coroute_paths[pair])
+    coroute_stats['num_paths'].append(num_paths)
+    route_lengths = [p for p in minimum_routes[pair].values()]
+    coroute_stats['route_lengths'] += route_lengths
+    coroute_lengths = [len(next(iter(coroute_paths[pair])))-1]*len(coroute_paths[pair])
+    coroute_stats['path_lengths'] += path_lengths
+
+coroute_distances =  []
+for pair in coroute_paths:
+    for path in coroute_paths[pair]:
+        ## Real distance
+        d = 0.0
+        for i in range(1, len(path)):
+            d += shipping_dist[path[i-1], path[i]]
+        coroute_stats['distances'].append(d)
 
 ## Path graph paths
 print("Computing path path stats.", flush=True)
@@ -153,15 +170,10 @@ with open(scratch_base + 'sp_pathrep_minroutes.pickle', 'rb') as fpickle:
 
 for pair in pg_paths:
     num_paths = len(pg_paths[pair])
-    #num_paths_dist_pg.append(num_paths)
     path_stats['num_paths'].append(num_paths)
-    #assert pair in minimum_routes, f'{pair} not in minimum_routes??'
-    #route_lengths = [min([p for p in minimum_routes[pair].values()])]
     route_lengths = [p for p in minimum_routes[pair].values()]
-    #route_lengths_dist_pg += route_lengths
     path_stats['route_lengths'] += route_lengths
-    path_lengths = [len(next(iter(pg_paths[pair])))-1]*len(pg_paths[pair]) 
-    #path_lengths_dist_pg +=  path_lengths
+    path_lengths = [len(next(iter(pg_paths[pair])))-1]*len(pg_paths[pair])
     path_stats['path_lengths'] += path_lengths
 
 pg_distances =  []
@@ -171,10 +183,9 @@ for pair in pg_paths:
         d = 0.0
         for i in range(1, len(path)):
             d += shipping_dist[path[i-1], path[i]]
-        #pg_distances.append(d)
         path_stats['distances'].append(d)
 
 
 print("Dumping stats.", flush=True)
 with open(scratch_base + f'path_comparison_stats_dt-{dt_thresh}_rt-{rt_thresh}.pickle', 'wb') as fpickle:
-    pickle.dump((filtered_stats, clique_stats, path_stats), fpickle)
+    pickle.dump((filtered_stats, clique_stats, coroute_stats, path_stats), fpickle)
