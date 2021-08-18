@@ -21,14 +21,75 @@ def write_pair(shortest_paths, s, t, mr_dist, open_outfile, distances):
     return total_distances
 
 def write_filtered(shortest_paths, s, t, total_distances, mr_dist, open_outfile, distance_thresh, redundancy_thresh):
+    def get_compare_path(path, redundancy_thresh):
+        if redundancy_thresh == 1.0:
+            ## If the redundancy threhold is the whole path,
+            ## we don't need to remove the endpoints.
+            compare_path = path
+        else:
+            ## Remove the source and target
+            compare_path = list(path)
+            del compare_path[0], compare_path[-1]
+        return compare_path
+
     filtered_paths = set()
     ## If there is only 1 path, we skip filtering
     if len(total_distances) > 1:
-        ## Filter based on redundancy first
-        ## This is important because the minimum
-        ## distance path is redundant in some cases
+        ## Get sorted list of paths
         sorted_paths = sorted(total_distances.keys(), key=lambda p: len(p))
         max_path_len = len(sorted_paths[-1])
+
+        ## Filter based on disatnce first, also ensuring that the
+        ## minimum distance path is not redundant (this can happen)
+        found_minimum = False
+        while not found_minimum:
+            ## Find the minimum distance path among paths
+            ## that have not already been deemed redundant
+            min_dist = float('inf')
+            min_path = None
+            available_paths = []
+            for path in total_distances:
+                if path not in filtered_paths:
+                    available_paths.append(path)
+                    if total_distances[path] < min_dist:
+                        min_dist = total_distances[path]
+                        min_path = path
+            ## Ensure this path is not redundant with any shorter path
+            longer_path = min_path
+            longer_cmp_path = get_compare_path(longer_path, redundancy_thresh)
+            path_idx = sorted_paths.index(min_path)
+            found_minimum = True
+            ## Look at paths shorter than the current minimum distance path
+            for i in range(path_idx):
+                shorter_path = sorted_paths[i]
+                if len(shorter_path) == max_path_len:
+                    ## If the minimum distance path is the same length as
+                    ## the longest path, it cannot be redundant
+                    break
+                elif shorter_path in filtered_paths or len(shorter_path) == 2:
+                    ## If we already removed this path, or if it is
+                    ## a direct edge (we will always keep those), skip it
+                    continue
+
+                compare_path = get_compare_path(shorter_path, redundancy_thresh)
+                ## Check against the minimum distance path
+                if len(longer_path) == len(shorter_path):
+                    ## Stop when we reach paths that are the same length
+                    ## as shorter_path, since they can't be redundant
+                    break
+
+                if (len(set(longer_cmp_path).intersection(compare_path)) / len(compare_path)) >= redundancy_thresh:
+                    filtered_paths.add(tuple(longer_path))
+                    found_minimum = False
+                    break
+
+        ## Do distance filtering now that we know
+        ## we have the correct minimum
+        for path in available_paths:
+            if total_distances[path] > min_dist*distance_thresh:
+                filtered_paths.add(path)
+
+        ## Filter based on redundancy
         for i in range(len(sorted_paths)):
             shorter_path = sorted_paths[i]
             if len(shorter_path) == max_path_len:
@@ -40,14 +101,7 @@ def write_filtered(shortest_paths, s, t, total_distances, mr_dist, open_outfile,
                 ## a direct edge (we will always keep those)
                 continue
 
-            if redundancy_thresh == 1.0:
-                ## If the redundancy threhold is the whole path,
-                ## we don't need to remove the endpoints.
-                compare_path = shorter_path
-            else:
-                ## Remove the source and target
-                compare_path = list(shorter_path)
-                del compare_path[0], compare_path[-1]
+            compare_path = get_compare_path(shorter_path, redundancy_thresh)
 
             ## Check against all longer paths
             for j in range(i+1, len(sorted_paths)):
@@ -57,30 +111,11 @@ def write_filtered(shortest_paths, s, t, total_distances, mr_dist, open_outfile,
                     ## have aleady been filtered
                     continue
 
-                if redundancy_thresh == 1.0:
-                    longer_cmp_path = longer_path
-                else:
-                    longer_cmp_path = list(longer_path)
-                    del longer_cmp_path[0], longer_cmp_path[-1]
+                longer_cmp_path = get_compare_path(longer_path, redundancy_thresh)
 
                 if (len(set(longer_cmp_path).intersection(compare_path)) / len(compare_path)) >= redundancy_thresh:
                     filtered_paths.add(tuple(longer_path))
-
-        ## Filter based on distances (as long as there
-        ## are paths remaining to filter)
-        if len(filtered_paths) < len(total_distances)-1:
-            min_dist = float('inf')
-            available_paths = []
-            for path in total_distances:
-                if path not in filtered_paths:
-                    available_paths.append(path)
-                    if total_distances[path] < min_dist:
-                        min_dist = total_distances[path]
-            ## Do distance filtering
-            for path in available_paths:
-                if total_distances[path] > min_dist*distance_thresh:
-                    filtered_paths.add(path)
-
+ 
     for path, route_list in shortest_paths[mr_dist][s][t].items():
         if path not in filtered_paths:
             open_outfile.write(','.join(path) + '|' + str(mr_dist) + '|' + str(total_distances[path]) + '|' + '|'.join([','.join(map(str, r)) for r in route_list]) + '\n')
