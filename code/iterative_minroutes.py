@@ -61,7 +61,7 @@ def write_filtered(shortest_paths, s, t, total_distances, mr_dist, open_outfile,
                         else:
                             min_paths = set([path])
                         prev_min = min_dist
-
+            found_minimum = True
             ## Ensure paths with minimum shipping distance are
             ## not redundant with any shorter paths
             for min_path in min_paths:
@@ -113,12 +113,11 @@ def write_filtered(shortest_paths, s, t, total_distances, mr_dist, open_outfile,
             for j in range(i+1, len(sorted_paths)):
                 longer_path = sorted_paths[j]
                 if len(longer_path) == len(shorter_path) or longer_path in filtered_paths:
-                    ## Skip paths that are the same length as shorter_path or
-                    ## have aleady been filtered
+                    ## Skip paths that are the same length as 
+                    ## shorter_path or have aleady been filtered
                     continue
 
                 longer_cmp_path = get_compare_path(longer_path, redundancy_thresh)
-
                 if (len(set(longer_cmp_path).intersection(compare_path)) / len(compare_path)) >= redundancy_thresh:
                     filtered_paths.add(tuple(longer_path))
 
@@ -282,7 +281,7 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
                                 shortest_paths[dist][s][t].setdefault(path, list())
                                 ## Assert that the target only appears once in the path.
                                 ## NOTE: This will slow down the computation, but I want to make sure it is right.
-                                assert path.count(t) == 1, f'path.count({t}) is {path.count(t)} in path {path}.'
+                                #assert path.count(t) == 1, f'path.count({t}) is {path.count(t)} in path {path}.'
                                 for r1 in shortest_paths[dist-1][s][w][p1]:
                                     for r2 in shortest_paths[1][w][t][p2]:
                                         route_list = r1+r2
@@ -295,9 +294,9 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
                                         if len(set(route_list)) == dist:
                                             shortest_paths[dist][s][t][path].append(route_list)
 
-                assert found_t, f"Did not find t {t} from s {s}."
-                assert t in shortest_paths[dist][s], f"shortest_paths[{dist}[{s}] does not contain {t}."
-                assert len(shortest_paths[dist][s][t]) > 0, f"No paths found between {s} and {t}."
+                #assert found_t, f"Did not find t {t} from s {s}."
+                #assert t in shortest_paths[dist][s], f"shortest_paths[{dist}[{s}] does not contain {t}."
+                #assert len(shortest_paths[dist][s][t]) > 0, f"No paths found between {s} and {t}."
 
                 ## Add (s,t) to pairs_counted
                 pairs_counted[(s,t)] = dist
