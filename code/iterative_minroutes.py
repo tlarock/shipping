@@ -36,90 +36,54 @@ def write_filtered(shortest_paths, s, t, total_distances, mr_dist, open_outfile,
     ## If there is only 1 path, we skip filtering
     if len(total_distances) > 1:
         ## Get sorted list of paths
-        sorted_paths = sorted(total_distances.keys(), key=lambda p: len(p))
-        max_path_len = len(sorted_paths[-1])
+        sorted_paths = sorted(total_distances.keys(), key=lambda p: len(p), reverse=True)
+        min_path_len = len(sorted_paths[-1])
 
-        ## Filter based on disatnce first, also ensuring that the
-        ## minimum distance path is not redundant (this can happen)
-        found_minimum = False
-        while not found_minimum:
-            ## Find the minimum distance path among paths
-            ## that have not already been deemed redundant
-            prev_min = float('inf')
-            min_dist = float('inf')
-            ## min_paths will be a list because sometimes paths
-            ## have the same distance
-            min_paths = None
-            available_paths = []
-            for path in total_distances:
-                if path not in filtered_paths:
+        ## Filter based on redundancy
+        for i, longer_path in enumerate(sorted_paths):
+            if len(longer_path) == min_path_len:
+                ## The shortest paths can't possibly be redundant with any others,
+                ## so once we reach one we can stop
+                break
+            elif longer_path in filtered_paths:
+                ## Skip this path if we already removed it
+                continue
+
+            compare_path = get_compare_path(longer_path, redundancy_thresh)
+
+            ## Check against all shorter paths
+            for j in range(i+1, len(sorted_paths)):
+                shorter_path = sorted_paths[j]
+                if len(shorter_path) == len(longer_path):
+                    ## Skip paths that are the same length as
+                    ## longer_path, can't be redundant
+                    continue
+
+                shorter_cmp_path = get_compare_path(shorter_path, redundancy_thresh)
+                if (len(set(shorter_cmp_path).intersection(compare_path)) / len(shorter_cmp_path)) >= redundancy_thresh:
+                    filtered_paths.add(tuple(longer_path))
+                    ## We can break as soon as we find one shorter_path
+                    ## that longer_path is redundant with
+                    break
+
+        ## Compute minimum distance among remaining paths
+        available_paths = []
+        min_dist = float('inf')
+        for path in sorted_paths:
+            if path not in filtered_paths:
+                ## only put paths in "available" if their distance is smaller
+                ## the current threshold (which will either be right or an overestimate)
+                if total_distances[path] <= min_dist*distance_thresh:
                     available_paths.append(path)
-                    if total_distances[path] <= min_dist:
+                    if total_distances[path] < min_dist:
                         min_dist = total_distances[path]
-                        if min_dist == prev_min:
-                            min_paths.add(path)
-                        else:
-                            min_paths = set([path])
-                        prev_min = min_dist
-            found_minimum = True
-            ## Ensure paths with minimum shipping distance are
-            ## not redundant with any shorter paths
-            for min_path in min_paths:
-                longer_path = min_path
-                longer_cmp_path = get_compare_path(longer_path, redundancy_thresh)
-                path_idx = sorted_paths.index(min_path)
-                ## Look at paths shorter than the current minimum distance path
-                for i in range(path_idx):
-                    shorter_path = sorted_paths[i]
-                    if len(shorter_path) == max_path_len or len(longer_path) == len(shorter_path):
-                        ## If the shorter path is the same length as
-                        ## the longest path or the minimum distance path,
-                        ## it cannot be redundant
-                        break
-                    elif shorter_path in filtered_paths or len(shorter_path) == 2:
-                        ## If we already removed this path, or if it is
-                        ## a direct edge (we will always keep those), skip it
-                        continue
+                else:
+                    filtered_paths.add(path)
 
-                    compare_path = get_compare_path(shorter_path, redundancy_thresh)
-                    if (len(set(longer_cmp_path).intersection(compare_path)) / len(compare_path)) >= redundancy_thresh:
-                        ## If the minimum distance path is redundant,
-                        ## filter it out.
-                        filtered_paths.add(tuple(longer_path))
-            ## If all of the minimum distance paths have been filtered, start over
-            if min_paths.intersection(filtered_paths) == min_paths:
-                found_minimum = False
-
-        ## Do distance filtering now that we know
-        ## we have the correct minimum
+        ## Do final distance filtering
         for path in available_paths:
             if total_distances[path] > min_dist*distance_thresh:
                 filtered_paths.add(path)
-
-        ## Filter based on redundancy
-        for i, shorter_path in enumerate(sorted_paths):
-            if len(shorter_path) == max_path_len:
-                ## The longest paths can't possibly be redundant with each other,
-                ## so once we reach one we can stop
-                break
-            elif shorter_path in filtered_paths or len(shorter_path) == 2:
-                ## Skip this path if we already removed it or if it is
-                ## a direct edge (we will always keep those)
-                continue
-
-            compare_path = get_compare_path(shorter_path, redundancy_thresh)
-
-            ## Check against all longer paths
-            for j in range(i+1, len(sorted_paths)):
-                longer_path = sorted_paths[j]
-                if len(longer_path) == len(shorter_path) or longer_path in filtered_paths:
-                    ## Skip paths that are the same length as 
-                    ## shorter_path or have aleady been filtered
-                    continue
-
-                longer_cmp_path = get_compare_path(longer_path, redundancy_thresh)
-                if (len(set(longer_cmp_path).intersection(compare_path)) / len(compare_path)) >= redundancy_thresh:
-                    filtered_paths.add(tuple(longer_path))
 
     for path, route_list in shortest_paths[mr_dist][s][t].items():
         if path not in filtered_paths:
