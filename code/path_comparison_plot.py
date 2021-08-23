@@ -111,11 +111,10 @@ for pair in paper_paths_dict:
     path_lengths = [len(next(iter(paper_paths_dict[pair])))-1]*len(paper_paths_dict[pair])
     clique_stats['path_lengths'] += path_lengths
 
-clique_distances =  []
 for pair in minimum_routes_sp:
     for path in minimum_routes_sp[pair]:
-        if path not in filtered_paths[pair]:
-            continue
+        #if path not in filtered_paths[pair]:
+        #    continue
         ## Real distance
         d = 0.0
         for i in range(1, len(path)):
@@ -140,14 +139,16 @@ with open(scratch_base + 'coroute_minroute_paths.pickle', 'rb') as fpickle:
 for pair in coroute_paths:
     num_paths = len(coroute_paths[pair])
     coroute_stats['num_paths'].append(num_paths)
-    route_lengths = [p for p in minimum_routes[pair].values()]
-    coroute_stats['route_lengths'] += route_lengths
+    if pair in minimum_routes:
+        route_lengths = [p for p in minimum_routes[pair].values()]
+        coroute_stats['route_lengths'] += route_lengths
     coroute_lengths = [len(next(iter(coroute_paths[pair])))-1]*len(coroute_paths[pair])
-    coroute_stats['path_lengths'] += path_lengths
+    coroute_stats['path_lengths'] += coroute_lengths
 
-coroute_distances =  []
-for pair in coroute_paths:
-    for path in coroute_paths[pair]:
+for pair in minimum_routes:
+    for path in minimum_routes[pair]:
+        #if path not in filtered_paths[pair]:
+        #    continue
         ## Real distance
         d = 0.0
         for i in range(1, len(path)):
@@ -176,7 +177,6 @@ for pair in pg_paths:
     path_lengths = [len(next(iter(pg_paths[pair])))-1]*len(pg_paths[pair])
     path_stats['path_lengths'] += path_lengths
 
-pg_distances =  []
 for pair in pg_paths:
     for path in pg_paths[pair]:
         ## Real distance

@@ -5,8 +5,8 @@ args = sys.argv
 
 distance_thresh = float(args[1])
 redundancy_thresh = 1.0
-#scratch_base = '/scratch/larock.t/shipping/results/interpolated_paths/'
-scratch_base = '../results/interpolated_paths/'
+scratch_base = '/scratch/larock.t/shipping/results/interpolated_paths/'
+#scratch_base = '../results/interpolated_paths/'
 with open(scratch_base + 'iterative_paths_with_routes.txt', 'r') as fin:
     with open(scratch_base + f'iterative_paths_with_routes_filtered_dt-{distance_thresh}_rt-{redundancy_thresh}_updated.txt', 'w') as fout:
         filtered_paths = dict()

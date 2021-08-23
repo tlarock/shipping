@@ -45,47 +45,60 @@ def write_filtered(shortest_paths, s, t, total_distances, mr_dist, open_outfile,
         while not found_minimum:
             ## Find the minimum distance path among paths
             ## that have not already been deemed redundant
+            prev_min = float('inf')
             min_dist = float('inf')
-            min_path = None
+            ## min_paths will be a list because sometimes paths
+            ## have the same distance
+            min_paths = None
             available_paths = []
             for path in total_distances:
                 if path not in filtered_paths:
                     available_paths.append(path)
-                    if total_distances[path] < min_dist:
+                    if total_distances[path] <= min_dist:
                         min_dist = total_distances[path]
-                        min_path = path
-            ## Ensure this path is not redundant with any shorter path
-            longer_path = min_path
-            longer_cmp_path = get_compare_path(longer_path, redundancy_thresh)
-            path_idx = sorted_paths.index(min_path)
-            found_minimum = True
-            ## Look at paths shorter than the current minimum distance path
-            for i in range(path_idx):
-                shorter_path = sorted_paths[i]
-                if len(shorter_path) == max_path_len:
-                    ## If the minimum distance path is the same length as
-                    ## the longest path, it cannot be redundant
-                    break
-                elif shorter_path in filtered_paths or len(shorter_path) == 2:
-                    ## If we already removed this path, or if it is
-                    ## a direct edge (we will always keep those), skip it
-                    continue
+                        if min_dist == prev_min:
+                            min_paths.add(path)
+                        else:
+                            min_paths = set([path])
+                        prev_min = min_dist
 
-                compare_path = get_compare_path(shorter_path, redundancy_thresh)
-                ## Check against the minimum distance path
-                if len(longer_path) == len(shorter_path):
-                    ## Stop when we reach paths that are the same length
-                    ## as shorter_path, since they can't be redundant
-                    break
+            ## Ensure paths with minimum shipping distance are 
+            ## not redundant with any shorter paths
+            for min_path in min_paths:
+                longer_path = min_path
+                longer_cmp_path = get_compare_path(longer_path, redundancy_thresh)
+                path_idx = sorted_paths.index(min_path)
+                ## Look at paths shorter than the current minimum distance path
+                for i in range(path_idx):
+                    shorter_path = sorted_paths[i]
+                    if len(shorter_path) == max_path_len or len(longer_path) == len(shorter_path):
+                        ## If the shorter path is the same length as
+                        ## the longest path or the minimum distance path, 
+                        ## it cannot be redundant
+                        break
+                    elif shorter_path in filtered_paths or len(shorter_path) == 2:
+                        ## If we already removed this path, or if it is
+                        ## a direct edge (we will always keep those), skip it
+                        continue
 
-                if (len(set(longer_cmp_path).intersection(compare_path)) / len(compare_path)) >= redundancy_thresh:
-                    filtered_paths.add(tuple(longer_path))
-                    found_minimum = False
-                    break
+                    compare_path = get_compare_path(shorter_path, redundancy_thresh)
+                    if (len(set(longer_cmp_path).intersection(compare_path)) / len(compare_path)) >= redundancy_thresh:
+                        ## If the minimum distance path is redundant, 
+                        ## filter it and reset found_minimum to False,
+                        ## since we won't consider it the minimum disatnce path
+                        filtered_paths.add(tuple(longer_path))
+            if min_paths.intersection(filtered_paths) == min_paths:
+                found_minimum = False
 
         ## Do distance filtering now that we know
         ## we have the correct minimum
         for path in available_paths:
+            ## TODO: In some cases we have multiple paths with the
+            ## exact same distances. In that case, we end up with
+            ## multiple minimum distance paths at alpha=1.0. However,
+            ## some of these paths are redundant with shorter paths that
+            ## do not pass the distance threshold, which causes weirdness
+            ## in the output.
             if total_distances[path] > min_dist*distance_thresh:
                 filtered_paths.add(path)
 
@@ -97,6 +110,7 @@ def write_filtered(shortest_paths, s, t, total_distances, mr_dist, open_outfile,
                 ## so once we reach one we can stop
                 break
             elif shorter_path in filtered_paths or len(shorter_path) == 2:
+                ## TODO: Could fix the above todo here, by still filtering using shorter paths that have been filtered. Kinda wonky though.
                 ## Skip this path if we already removed it or if it is
                 ## a direct edge (we will always keep those)
                 continue
