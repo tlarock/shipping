@@ -84,7 +84,7 @@ def write_filtered(shortest_paths, s, t, total_distances, mr_dist, open_outfile,
         for path in available_paths:
             if total_distances[path] > min_dist*distance_thresh:
                 filtered_paths.add(path)
-    
+
     assert len(filtered_paths) != len(shortest_paths[mr_dist][s][t]), f"All paths filtered for pair {s} and {t}!\nTotal distances:\n{total_distances}"
 
     for path, route_list in shortest_paths[mr_dist][s][t].items():
@@ -158,6 +158,7 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
         for dt in distance_thresholds:
             for rt in redundancy_thresholds:
                 dr_thresholds.append((dt,rt))
+
     ## Get all reachable pairs
     reachable_pairs = set()
     for node in G.nodes():
