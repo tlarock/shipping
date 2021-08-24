@@ -84,6 +84,8 @@ def write_filtered(shortest_paths, s, t, total_distances, mr_dist, open_outfile,
         for path in available_paths:
             if total_distances[path] > min_dist*distance_thresh:
                 filtered_paths.add(path)
+    
+    assert len(filtered_paths) != len(shortest_paths[mr_dist][s][t]), f"All paths filtered for pair {s} and {t}!\nTotal distances:\n{total_distances}"
 
     for path, route_list in shortest_paths[mr_dist][s][t].items():
         if path not in filtered_paths:
@@ -245,7 +247,7 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
                                 shortest_paths[dist][s][t].setdefault(path, list())
                                 ## Assert that the target only appears once in the path.
                                 ## NOTE: This will slow down the computation, but I want to make sure it is right.
-                                #assert path.count(t) == 1, f'path.count({t}) is {path.count(t)} in path {path}.'
+                                assert path.count(t) == 1, f'path.count({t}) is {path.count(t)} in path {path}.'
                                 for r1 in shortest_paths[dist-1][s][w][p1]:
                                     for r2 in shortest_paths[1][w][t][p2]:
                                         route_list = r1+r2
@@ -258,9 +260,9 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
                                         if len(set(route_list)) == dist:
                                             shortest_paths[dist][s][t][path].append(route_list)
 
-                #assert found_t, f"Did not find t {t} from s {s}."
-                #assert t in shortest_paths[dist][s], f"shortest_paths[{dist}[{s}] does not contain {t}."
-                #assert len(shortest_paths[dist][s][t]) > 0, f"No paths found between {s} and {t}."
+                assert found_t, f"Did not find t {t} from s {s}."
+                assert t in shortest_paths[dist][s], f"shortest_paths[{dist}[{s}] does not contain {t}."
+                assert len(shortest_paths[dist][s][t]) > 0, f"No paths found between {s} and {t}."
 
                 ## Add (s,t) to pairs_counted
                 pairs_counted[(s,t)] = dist
