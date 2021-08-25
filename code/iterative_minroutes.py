@@ -1,3 +1,4 @@
+import os
 import networkx as nx
 from contextlib import ExitStack
 from collections import defaultdict, Counter
@@ -18,6 +19,10 @@ def write_pair(shortest_paths, s, t, mr_dist, open_outfile, distances):
             open_outfile.write(','.join(path) + '|' + str(mr_dist) + '|' + '|'.join([','.join(map(str, r)) for r in route_list]) + '\n')
         else:
             open_outfile.write(','.join(path) + '|' + str(mr_dist) + '|' + str(total_distances[path]) + '|' + '|'.join([','.join(map(str, r)) for r in route_list]) + '\n')
+    
+    open_outfile.flush()
+    os.fsync(open_outfile.fileno())
+
     return total_distances
 
 def write_filtered(shortest_paths, s, t, total_distances, mr_dist, ffilt, dr_thresholds):
@@ -63,24 +68,25 @@ def write_filtered(shortest_paths, s, t, total_distances, mr_dist, ffilt, dr_thr
                 ## We can break as soon as we find one shorter_path
                 ## that longer_path is redundant with
                 break
-
     redundancy_filtered = set(filtered_paths)
     available_paths = set(shortest_paths[mr_dist][s][t])-redundancy_filtered
     min_dist = min([total_distances[path] for path in available_paths])
     for (distance_thresh, _) in dr_thresholds:
         ## Compute minimum distance among remaining paths
-        filtered_paths = redundancy_filtered
+        filtered_paths = set(redundancy_filtered)
         ## Do final distance filtering
         for path in available_paths:
             if total_distances[path] > min_dist*distance_thresh:
                 filtered_paths.add(path)
-
+        
         assert len(filtered_paths) != len(shortest_paths[mr_dist][s][t]), f"All paths filtered for pair {s} and {t}!\nTotal distances:\n{total_distances}"
 
         for path, route_list in shortest_paths[mr_dist][s][t].items():
             if path not in filtered_paths:
                 ffilt[distance_thresh][1.0].write(','.join(path) + '|' + str(mr_dist) + '|' + str(total_distances[path]) + '|' + '|'.join([','.join(map(str, r)) for r in route_list]) + '\n')
-
+        
+        ffilt[distance_thresh][1.0].flush()
+        os.fsync(ffilt[distance_thresh][1.0].fileno())
 
 def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_thresholds=[], redundancy_thresholds=[]):
     '''
@@ -202,8 +208,7 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
             for (s,t) in pairs_counted.keys():
                 total_distances = write_pair(shortest_paths, s, t, dist, fout, distances)
                 if len(dr_thresholds) > 0:
-                    for (distance_threshold, redundancy_threshold) in dr_thresholds:
-                        write_filtered(shortest_paths, s, t, total_distances, dist, ffilt[distance_threshold][redundancy_threshold], distance_threshold, redundancy_threshold)
+                    write_filtered(shortest_paths, s, t, total_distances, dist, ffilt, dr_thresholds)
 
         ## Ensure we've got paths for every pair we should
         for (s,t) in all_distances.keys():
@@ -238,7 +243,7 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
                                 shortest_paths[dist][s][t].setdefault(path, list())
                                 ## Assert that the target only appears once in the path.
                                 ## NOTE: This will slow down the computation, but I want to make sure it is right.
-                                assert path.count(t) == 1, f'path.count({t}) is {path.count(t)} in path {path}.'
+                                #assert path.count(t) == 1, f'path.count({t}) is {path.count(t)} in path {path}.'
                                 for r1 in shortest_paths[dist-1][s][w][p1]:
                                     for r2 in shortest_paths[1][w][t][p2]:
                                         route_list = r1+r2
@@ -261,9 +266,8 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
                 if fout is not None:
                     total_distances = write_pair(shortest_paths, s, t, dist, fout, distances)
                     if len(dr_thresholds) > 0:
-                        for (distance_threshold, redundancy_threshold) in dr_thresholds:
-                            write_filtered(shortest_paths, s, t, total_distances, dist, ffilt[distance_threshold][redundancy_threshold], distance_threshold, redundancy_threshold)
-
+                        write_filtered(shortest_paths, s, t, total_distances, dist, ffilt, dr_thresholds)
+            
             remaining_pairs = reachable_pairs-set(pairs_counted.keys())
             print(f'{len(remaining_pairs)} remaining after distance {dist}.', flush=True)
 
