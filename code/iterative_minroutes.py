@@ -19,9 +19,6 @@ def write_pair(shortest_paths, s, t, mr_dist, open_outfile, distances):
             open_outfile.write(','.join(path) + '|' + str(mr_dist) + '|' + '|'.join([','.join(map(str, r)) for r in route_list]) + '\n')
         else:
             open_outfile.write(','.join(path) + '|' + str(mr_dist) + '|' + str(total_distances[path]) + '|' + '|'.join([','.join(map(str, r)) for r in route_list]) + '\n')
-    
-    open_outfile.flush()
-    os.fsync(open_outfile.fileno())
 
     return total_distances
 
@@ -39,35 +36,36 @@ def write_filtered(shortest_paths, s, t, total_distances, mr_dist, ffilt, dr_thr
 
     filtered_paths = set()
     ## Get sorted list of paths
-    sorted_paths = sorted(total_distances.keys(), key=lambda p: len(p), reverse=True)
-    min_path_len = len(sorted_paths[-1])
+    paths_by_length = dict()
+    for path in total_distances.keys():
+        paths_by_length.setdefault(len(path), set())
+        paths_by_length[len(path)].add(path)
 
+    sorted_lengths = sorted(paths_by_length.keys(), reverse=True)
     ## Filter based on redundancy
-    for i, longer_path in enumerate(sorted_paths):
-        if len(longer_path) == min_path_len:
-            ## The shortest paths can't possibly be redundant with any others,
-            ## so once we reach one we can stop
-            break
-        elif longer_path in filtered_paths:
-            ## Skip this path if we already removed it
-            continue
+    ## Loop from longest to 2nd from shortest
+    for i in range(len(sorted_lengths)-1):
+        length = sorted_lengths[i]
+        for longer_path in paths_by_length[length]:
+            broken = False
+            #compare_path = get_compare_path(longer_path, redundancy_thresh=1.0)
+            compare_path = set(longer_path)
+            ## Check against all shorter paths
+            ## Loop over all shortest path lengths
+            for j in range(len(sorted_lengths)-1, i, -1):
+                slength = sorted_lengths[j]
+                for shorter_path in paths_by_length[slength]:
+                    #shorter_cmp_path = get_compare_path(shorter_path, redundancy_thresh=1.0)
+                    shorter_cmp_path = set(shorter_path)
+                    if (len(shorter_cmp_path.intersection(compare_path)) / len(shorter_cmp_path)) >= 1.0:
+                        filtered_paths.add(longer_path)
+                        ## We can break as soon as we find one shorter_path
+                        ## that longer_path is redundant with
+                        broken = True
+                        break
+                if broken:
+                    break
 
-        compare_path = get_compare_path(longer_path, redundancy_thresh=1.0)
-
-        ## Check against all shorter paths
-        for j in range(i+1, len(sorted_paths)):
-            shorter_path = sorted_paths[j]
-            if len(shorter_path) == len(longer_path):
-                ## Skip paths that are the same length as
-                ## longer_path, can't be redundant
-                continue
-
-            shorter_cmp_path = get_compare_path(shorter_path, redundancy_thresh=1.0)
-            if (len(set(shorter_cmp_path).intersection(compare_path)) / len(shorter_cmp_path)) >= 1.0:
-                filtered_paths.add(tuple(longer_path))
-                ## We can break as soon as we find one shorter_path
-                ## that longer_path is redundant with
-                break
     redundancy_filtered = set(filtered_paths)
     available_paths = set(shortest_paths[mr_dist][s][t])-redundancy_filtered
     min_dist = min([total_distances[path] for path in available_paths])
@@ -78,15 +76,13 @@ def write_filtered(shortest_paths, s, t, total_distances, mr_dist, ffilt, dr_thr
         for path in available_paths:
             if total_distances[path] > min_dist*distance_thresh:
                 filtered_paths.add(path)
-        
+
         assert len(filtered_paths) != len(shortest_paths[mr_dist][s][t]), f"All paths filtered for pair {s} and {t}!\nTotal distances:\n{total_distances}"
 
         for path, route_list in shortest_paths[mr_dist][s][t].items():
             if path not in filtered_paths:
                 ffilt[distance_thresh][1.0].write(','.join(path) + '|' + str(mr_dist) + '|' + str(total_distances[path]) + '|' + '|'.join([','.join(map(str, r)) for r in route_list]) + '\n')
-        
-        ffilt[distance_thresh][1.0].flush()
-        os.fsync(ffilt[distance_thresh][1.0].fileno())
+
 
 def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_thresholds=[], redundancy_thresholds=[]):
     '''
@@ -267,8 +263,14 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
                     total_distances = write_pair(shortest_paths, s, t, dist, fout, distances)
                     if len(dr_thresholds) > 0:
                         write_filtered(shortest_paths, s, t, total_distances, dist, ffilt, dr_thresholds)
-            
+
             remaining_pairs = reachable_pairs-set(pairs_counted.keys())
             print(f'{len(remaining_pairs)} remaining after distance {dist}.', flush=True)
+            fout.flush()
+            os.fsync(fout.fileno())
+            for (distance_thresh,_) in dr_thresholds:
+                ffilt[distance_thresh][1.0].flush()
+                os.fsync(ffilt[distance_thresh][1.0].fileno())
+
 
     return shortest_paths
