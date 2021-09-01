@@ -243,12 +243,11 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
                                 shortest_paths[dist][s].setdefault(t, dict())
                                 path = p1[0:] + p2[1:]
                                 shortest_paths[dist][s][t].setdefault(path, list())
-                                ## Assert that the target only appears once in the path.
-                                ## NOTE: This will slow down the computation, but I want to make sure it is right.
-                                #assert path.count(t) == 1, f'path.count({t}) is {path.count(t)} in path {path}.'
+                                all_path_routes = []
                                 for r1 in shortest_paths[dist-1][s][w][p1]:
                                     for r2 in shortest_paths[1][w][t][p2]:
                                         route_list = r1+r2
+                                        all_path_routes.append(route_list)
                                         ## Sometimes a specific ordering of routes actually violates
                                         ## the closed vs. open walk assumption, resulting in a route
                                         ## trajectory that looks shorter than what is actually possible.
@@ -257,6 +256,12 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
                                         ## We just ignore these cases using the below conditional.
                                         if len(set(route_list)) == dist:
                                             shortest_paths[dist][s][t][path].append(route_list)
+
+                                ## If for there are *no* valid route combinations that do not use
+                                ## the same route multiple times, assign all_path_routes
+                                if len(shortest_paths[dist][s][t][path]) == 0:
+                                    shortest_paths[dist][s][t][path] = list(all_path_routes)
+
 
                 assert found_t, f"Did not find t {t} from s {s}."
                 assert t in shortest_paths[dist][s], f"shortest_paths[{dist}[{s}] does not contain {t}."
