@@ -4,7 +4,7 @@ import numpy as np
 from route_betweenness import route_node_betweenness_from_file, route_edge_betweenness_from_file
 
 scratch_base = '/scratch/larock.t/shipping/'
-filename = scratch_base + 'results/interpolated_paths/iterative_paths_with_routes_filtered_dt-{}_rt-1.0_updated.txt'
+filename = scratch_base + 'results/interpolated_paths/iterative_paths_with_routes_filtered_dt-{}_rt-1.0.txt'
 alphas = [1.0, 1.05, 1.15, 1.25, 1.5, 1.75, 2.0]
 rnb = dict()
 reb = dict()
