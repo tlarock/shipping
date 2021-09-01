@@ -66,14 +66,19 @@ def write_filtered(shortest_paths, s, t, total_distances, mr_dist, ffilt, dr_thr
                 if broken:
                     break
 
-    redundancy_filtered = set(filtered_paths)
-    available_paths = set(shortest_paths[mr_dist][s][t])-redundancy_filtered
-    min_dist = min([total_distances[path] for path in available_paths])
-    for (distance_thresh, _) in dr_thresholds:
+    all_paths = set(shortest_paths[mr_dist][s][t])
+    previously_filtered = set(filtered_paths)
+    available_paths = all_paths-previously_filtered
+    min_dist = min([total_distances[path] for path in available_paths]) ## will not change
+    ## iterate in reverse order by threshold magnitude so that the least restrictive
+    ## threshold is evaluated first, then the next is evaluated without recomputing
+    ## for paths that were already filtered with a larger threshold
+    sorted_thresholds = sorted([dt for dt, _ in dr_thresholds], reverse=True)
+    for distance_thresh in sorted_thresholds:
         ## Compute minimum distance among remaining paths
-        filtered_paths = set(redundancy_filtered)
+        filtered_paths = set(previously_filtered)
         ## Do final distance filtering
-        for path in available_paths:
+        for path in available_paths-previously_filtered:
             if total_distances[path] > min_dist*distance_thresh:
                 filtered_paths.add(path)
 
@@ -82,6 +87,8 @@ def write_filtered(shortest_paths, s, t, total_distances, mr_dist, ffilt, dr_thr
         for path, route_list in shortest_paths[mr_dist][s][t].items():
             if path not in filtered_paths:
                 ffilt[distance_thresh][1.0].write(','.join(path) + '|' + str(mr_dist) + '|' + str(total_distances[path]) + '|' + '|'.join([','.join(map(str, r)) for r in route_list]) + '\n')
+
+        previously_filtered.update(filtered_paths)
 
 
 def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_thresholds=[], redundancy_thresholds=[]):
