@@ -1,9 +1,3 @@
-import sys
-from iterative_minroutes import write_filtered
-
-args = sys.argv
-
-redundancy_thresh = 1.0
 scratch_base = '/scratch/larock.t/shipping/results/interpolated_paths/'
 #scratch_base = '../results/interpolated_paths/'
 with open(scratch_base + 'iterative_paths.txt', 'r') as fin:

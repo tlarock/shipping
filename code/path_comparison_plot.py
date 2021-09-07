@@ -42,7 +42,7 @@ else:
     rt_thresh = 1.0
     dt_thresh = 1.5
 
-with open(scratch_base + f'iterative_paths_with_routes_filtered_dt-{dt_thresh}_rt-{rt_thresh}.txt', 'r') as fin:
+with open(scratch_base + f'iterative_paths_filtered_dt-{dt_thresh}_rt-{rt_thresh}.txt', 'r') as fin:
     pair_counter = 0
     total_pairs = 0
     prev_pair = (-1,-1)
@@ -83,7 +83,7 @@ path_lengths = [len(p)-1 for p in filtered_paths[prev_pair].keys()]
 filtered_stats['path_lengths'] += path_lengths
 
 import pickle
-with open(scratch_base + f'iterative_paths_with_routes_filtered_dt-{dt_thresh}_rt-{rt_thresh}_stats.pickle', 'wb') as fpickle:
+with open(scratch_base + f'iterative_paths_filtered_dt-{dt_thresh}_rt-{rt_thresh}_stats.pickle', 'wb') as fpickle:
     pickle.dump(filtered_stats, fpickle)
 
 print("Computing clique path stats.", flush=True)

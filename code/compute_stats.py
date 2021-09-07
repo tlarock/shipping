@@ -7,7 +7,7 @@ stats = {
     'distances':[],
     'routes_per_path':[]
 }
-with open('/scratch/larock.t/shipping/results/interpolated_paths/iterative_paths_with_routes.txt', 'r') as fin:
+with open('/scratch/larock.t/shipping/results/interpolated_paths/iterative_paths.txt', 'r') as fin:
     pair_counter = 0
     total_pairs = 0
     prev_pair = (-1,-1)
@@ -62,5 +62,5 @@ stats['path_lengths'] += path_lengths
 
 import pickle
 print("Pickling distributions.", flush=True)
-with open('/scratch/larock.t/shipping/results/interpolated_paths/iterative_paths_with_routes_stats.pickle', 'wb') as fpickle:
+with open('/scratch/larock.t/shipping/results/interpolated_paths/iterative_paths_stats.pickle', 'wb') as fpickle:
     pickle.dump(stats, fpickle)
