@@ -1,6 +1,14 @@
 import sys
 from iterative_minroutes import write_filtered
 
+shipping_dist = dict()
+#distance_file = '../data/port_shipping_distances.csv'
+distance_file = '/home/larock.t/git/shipping/data/port_shipping_distances.csv'
+with open(distance_file, 'r') as fin:
+    for line in fin:
+        u,v,dist = line.strip().split(',')
+        shipping_dist[(u,v)] = float(dist)
+
 args = sys.argv
 
 distance_thresh = 'detour'
@@ -9,6 +17,7 @@ scratch_base = '/scratch/larock.t/shipping/results/interpolated_paths/'
 #scratch_base = '../results/interpolated_paths/'
 with open(scratch_base + 'iterative_paths.txt', 'r') as fin:
     with open(scratch_base + f'iterative_paths_filtered_dt-{distance_thresh}_rt-{redundancy_thresh}_updated.txt', 'w') as fout:
+        ffilt = {distance_thresh:{redundancy_thresh:fout}}
         filtered_paths = dict()
         total_distances = dict()
         pair_counter = 0
@@ -34,7 +43,7 @@ with open(scratch_base + 'iterative_paths.txt', 'r') as fin:
             filtered_paths[dist][pair[0]][pair[1]][tuple(path)] = list_routes
 
             if pair != prev_pair and not first:
-                write_filtered(filtered_paths, prev_pair[0], prev_pair[1], total_distances[prev_pair], prev_dist, fout, [distance_thresh])
+                write_filtered(filtered_paths, prev_pair[0], prev_pair[1], total_distances[prev_pair], prev_dist, ffilt, [distance_thresh], shipping_dist[prev_pair])
                 del filtered_paths[prev_dist][prev_pair[0]][prev_pair[1]]
                 del total_distances[prev_pair]
                 pair_counter += 1
@@ -48,4 +57,4 @@ with open(scratch_base + 'iterative_paths.txt', 'r') as fin:
             if first: first = False
 
         ## Handle last pair
-        write_filtered(filtered_paths, prev_pair[0], prev_pair[1], total_distances[prev_pair], dist, fout, [distance_thresh])
+        write_filtered(filtered_paths, prev_pair[0], prev_pair[1], total_distances[prev_pair], dist, ffilt, [distance_thresh], shipping_dist[prev_pair])

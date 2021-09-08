@@ -39,7 +39,7 @@ print("Dumped results, starting full data computation.", flush=True)
 
 filename = scratch_base + 'results/interpolated_paths/iterative_paths.txt'
 print("Starting node betweenness.", flush=True)
-node_betw = get_rb(filename, 'node', 'all')
+_, _, node_betw = get_rb(filename, 'node', 'all')
 print("Node betweenness done.", flush=True)
 for node, btw in node_betw.items():
     rnb.setdefault(node, dict())
@@ -50,7 +50,7 @@ with open(scratch_base + 'results/interpolated_paths/route_node_betweenness_all.
 print("Dumped node results.", flush=True)
 
 print("Starting edge betweenness.", flush=True)
-edge_betw = get_rb(filename, 'edge', 'all')
+_, _, edge_betw = get_rb(filename, 'edge', 'all')
 print("Edge betweenness done.", flush=True)
 for edge, btw in edge_betw.items():
     reb.setdefault(edge, dict())

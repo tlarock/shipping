@@ -22,7 +22,7 @@ def write_pair(shortest_paths, s, t, mr_dist, open_outfile, distances):
 
     return total_distances
 
-def write_filtered(shortest_paths, s, t, total_distances, mr_dist, ffilt, sorted_thresholds):
+def write_filtered(shortest_paths, s, t, total_distances, mr_dist, ffilt, sorted_thresholds, shipping_dist):
     ## Filter out all redundant paths first
     filtered_paths = filter_redundant(total_distances, redundancy_thresh=1.0)
     all_paths = set(shortest_paths[mr_dist][s][t])
@@ -33,7 +33,7 @@ def write_filtered(shortest_paths, s, t, total_distances, mr_dist, ffilt, sorted
     for distance_thresh in sorted_thresholds:
         available_paths = all_paths-previously_filtered
         if distance_thresh == 'detour':
-            filtered_paths = filter_dist_detour(total_distances, filtered_paths, available_paths, distance_thresh)
+            filtered_paths = filter_dist_detour(total_distances, filtered_paths, available_paths, shipping_dist)
         else:
             filtered_paths = filter_distance(total_distances, filtered_paths, available_paths, distance_thresh)
             previously_filtered.update(filtered_paths)
@@ -179,7 +179,7 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
             for (s,t) in pairs_counted.keys():
                 total_distances = write_pair(shortest_paths, s, t, dist, fout, distances)
                 if len(dr_thresholds) > 0:
-                    write_filtered(shortest_paths, s, t, total_distances, dist, ffilt, sorted_thresholds)
+                    write_filtered(shortest_paths, s, t, total_distances, dist, ffilt, sorted_thresholds, distances[(s,t)])
 
         ## Ensure we've got paths for every pair we should
         for (s,t) in all_distances.keys():
@@ -249,7 +249,7 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
                 if fout is not None:
                     total_distances = write_pair(shortest_paths, s, t, dist, fout, distances)
                     if len(dr_thresholds) > 0:
-                        write_filtered(shortest_paths, s, t, total_distances, dist, ffilt, sorted_thresholds)
+                        write_filtered(shortest_paths, s, t, total_distances, dist, ffilt, sorted_thresholds, distances[(s,t)])
 
             remaining_pairs = reachable_pairs-set(pairs_counted.keys())
             print(f'{len(remaining_pairs)} remaining after distance {dist}.', flush=True)
