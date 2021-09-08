@@ -13,6 +13,22 @@ def filter_distance(total_distances, filtered_paths, available_paths, distance_t
 
     return filtered_paths
 
+def filter_dist_detour(total_distances, filtered_paths, available_paths, gc_dist):
+    '''
+
+    '''
+    ## Set the threshold
+    avail_tdists = {path:dist for path, dist in total_distances.items() if path in available_paths}
+    ## detour factor for minimum path
+    min_path,  min_dist = sorted(avail_tdists.items(), key=lambda kv: kv[1])[0]
+    min_true_detour_fact = min_dist / gc_dist
+    all_min_detour_facts = {path:total_distances[path]/min_dist for path in available_paths-{min_path}}
+    for path in all_min_detour_facts:
+        if all_min_detour_facts[path] > min_true_detour_fact:
+            filtered_paths.add(path)
+
+    return filtered_paths
+
 def filter_redundant(total_distances, redundancy_thresh):
     '''
     Accepts a paths defaultdict(dict), the result of all_shortest_paths(G),
