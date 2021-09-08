@@ -173,11 +173,12 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
 
         remaining_pairs = reachable_pairs-set(pairs_counted.keys())
         print(f'{len(remaining_pairs)} remaining after distance 1.', flush=True)
-        fout.flush()
-        os.fsync(fout.fileno())
-        for (distance_thresh,_) in dr_thresholds:
-            ffilt[distance_thresh][1.0].flush()
-            os.fsync(ffilt[distance_thresh][1.0].fileno())
+        if fout is not None:
+            fout.flush()
+            os.fsync(fout.fileno())
+            for (distance_thresh,_) in dr_thresholds:
+                ffilt[distance_thresh][1.0].flush()
+                os.fsync(ffilt[distance_thresh][1.0].fileno())
 
         while len(remaining_pairs) > 0:
             dist+=1
@@ -237,11 +238,12 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
 
             remaining_pairs = reachable_pairs-set(pairs_counted.keys())
             print(f'{len(remaining_pairs)} remaining after distance {dist}.', flush=True)
-            fout.flush()
-            os.fsync(fout.fileno())
-            for (distance_thresh,_) in dr_thresholds:
-                ffilt[distance_thresh][1.0].flush()
-                os.fsync(ffilt[distance_thresh][1.0].fileno())
+            if fout is not None:
+                fout.flush()
+                os.fsync(fout.fileno())
+                for (distance_thresh,_) in dr_thresholds:
+                    ffilt[distance_thresh][1.0].flush()
+                    os.fsync(ffilt[distance_thresh][1.0].fileno())
 
 
     return shortest_paths
