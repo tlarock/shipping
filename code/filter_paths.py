@@ -1,56 +1,4 @@
-def filter_paths(paths, shipping_dists, redundancy_thresh=0.5, distance_thresh=2.0):
-    '''
-    Accepts a paths defaultdict(dict), the result of all_shortest_paths(G),
-    and removes (in-place) all paths between all pairs of nodes whose
-    total route distance is distance_thresh times the minimum distances
-    computed over all paths between the pair, then removes paths that are
-    redundant based on overlap with shorter paths that are also minimum-route.
-
-
-    Parameters
-    ---------
-    paths (defaultdict(dict)): A (potentially empty) defaultdict containing
-                        all  minimum-routes paths from every source to every reahcable
-                        target in G.
-    shipping_dists (dict): A dictionary keyed by tuples of node pairs with value
-                        corresponding to the shipping distance between the pair
-                        of nodes.
-    redundancy_thresh (float): A value between 0 and 1 that governs the filtering
-                        of paths based on redundancy. A value of 1 means only paths
-                        that are completely contained in shorter paths are removed.
-                        A value of 0 means no paths are removed.
-    distance_thresh (float): A value > 1 that indicates how permissive the distance
-                        filtering should be. A value of 1.5 means paths will be accepted
-                        if their total distance is 50% larger than the minimum for that
-                        pair of source/target nodes.
-    Side Effect
-    -----------
-    Modifies paths in-place, filtering paths. Prints every 50,000 pairs.
-    '''
-
-    ## Counters for convenience because this process can be slow
-    pair_counter = 0
-    total_pairs = 0
-    for pair in paths:
-        print(pair)
-        ## If there is only 1 path, we have no choice
-        if len(paths[pair]) == 1:
-            continue
-
-        ## By definition, this will always keep *at least* the
-        ## path with the minimum total route distance
-        filter_distance(paths, pair, shipping_dists, distance_thresh)
-
-        ## By definition, this will always keep *at least* the
-        ## shortest length path
-        filter_redundant(paths, pair, redundancy_thresh)
-        pair_counter += 1
-        total_pairs += 1
-        if pair_counter == 50_000:
-            print(total_pairs)
-            pair_counter = 0
-
-def filter_distance(paths, pair, shipping_dists, distance_thresh):
+def filter_distance(total_distances, filtered_paths, available_paths, distance_thresh):
     '''
     Accepts a paths defaultdict(dict), the result of all_shortest_paths(G),
     and removes (in-place) all paths between the nodes indicated by pair whose
@@ -58,20 +6,14 @@ def filter_distance(paths, pair, shipping_dists, distance_thresh):
     computed over all paths between the pair of source/target nodes.
 
     '''
-    ## Compute the total distance for every path
-    total_distances = dict()
-    for path in paths[pair]:
-        d_r = 0.0
-        for i in range(1, len(path)):
-            d_r += shipping_dists[path[i-1], path[i]]
-        total_distances[path] = d_r
-
-    min_dist = min(total_distances.values())
-    for path in total_distances:
+    min_dist = min([total_distances[path] for path in available_paths]) ## will not change
+    for path in available_paths:
         if total_distances[path] > min_dist*distance_thresh:
-            del paths[pair][path]
+            filtered_paths.add(path)
 
-def filter_redundant(paths, pair, redundancy_thresh):
+    return filtered_paths
+
+def filter_redundant(total_distances, redundancy_thresh):
     '''
     Accepts a paths defaultdict(dict), the result of all_shortest_paths(G),
     and removes (in-place) all _redundant_  minimum-route paths between the
@@ -105,31 +47,45 @@ def filter_redundant(paths, pair, redundancy_thresh):
     path is visited in the longer path.
 
     '''
-    ## Sort the paths by length
-    sorted_paths = sorted(paths[pair].keys(), key=lambda p: len(p))
-    max_path_len = len(sorted_paths[-1])
-    removed_paths = set()
-    for i in range(len(sorted_paths)):
-        shorter_path = sorted_paths[i]
-        if len(shorter_path) == max_path_len:
-            ## The longest paths can't possibly be redundant,
-            ## so once we reach one we can stop
-            break
-        elif shorter_path in removed_paths:
-            ## Skip this path if we already removed it
-            continue
+    def get_compare_path(path, redundancy_thresh):
+        if redundancy_thresh == 1.0:
+            ## If the redundancy threhold is the whole path,
+            ## we don't need to remove the endpoints.
+            compare_path = set(path)
+        else:
+            ## Remove the source and target
+            compare_path = list(path)
+            del compare_path[0], compare_path[-1]
+        return compare_path
 
-        ## Remove the source and target
-        compare_path = list(shorter_path)
-        del compare_path[0], compare_path[-1]
-        ## Check against all longer paths
-        for j in range(i+1, len(sorted_paths)):
-            longer_path = sorted_paths[j]
-            if len(longer_path) == len(shorter_path) or longer_path in removed_paths:
-                continue
+    filtered_paths = set()
+    ## Get sorted list of paths
+    paths_by_length = dict()
+    for path in total_distances.keys():
+        paths_by_length.setdefault(len(path), set())
+        paths_by_length[len(path)].add(path)
 
-            longer_cmp_path = list(longer_path)
-            del longer_cmp_path[0], longer_cmp_path[-1]
-            if (len(set(longer_cmp_path).intersection(compare_path)) / len(compare_path)) >= redundancy_thresh:
-                removed_paths.add(tuple([c for c in longer_path]))
-                del paths[pair][longer_path]
+    sorted_lengths = sorted(paths_by_length.keys(), reverse=True)
+    ## Filter based on redundancy
+    ## Loop from longest to 2nd from shortest
+    for i in range(len(sorted_lengths)-1):
+        length = sorted_lengths[i]
+        for longer_path in paths_by_length[length]:
+            broken = False
+            compare_path = get_compare_path(longer_path, redundancy_thresh)
+            ## Check against all shorter paths
+            ## Loop over all shortest path lengths
+            for j in range(len(sorted_lengths)-1, i, -1):
+                slength = sorted_lengths[j]
+                for shorter_path in paths_by_length[slength]:
+                    shorter_cmp_path = get_compare_path(shorter_path, redundancy_thresh)
+                    if (len(shorter_cmp_path.intersection(compare_path)) / len(shorter_cmp_path)) >= redundancy_thresh:
+                        filtered_paths.add(longer_path)
+                        ## We can break as soon as we find one shorter_path
+                        ## that longer_path is redundant with
+                        broken = True
+                        break
+                if broken:
+                    break
+
+    return filtered_paths

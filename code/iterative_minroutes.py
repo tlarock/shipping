@@ -2,7 +2,7 @@ import os
 import networkx as nx
 from contextlib import ExitStack
 from collections import defaultdict, Counter
-
+from filter_paths import filter_distance, filter_redundant
 
 def compute_route_dist(path, distances):
     d = 0.0
@@ -23,65 +23,18 @@ def write_pair(shortest_paths, s, t, mr_dist, open_outfile, distances):
     return total_distances
 
 def write_filtered(shortest_paths, s, t, total_distances, mr_dist, ffilt, dr_thresholds):
-    def get_compare_path(path, redundancy_thresh):
-        if redundancy_thresh == 1.0:
-            ## If the redundancy threhold is the whole path,
-            ## we don't need to remove the endpoints.
-            compare_path = path
-        else:
-            ## Remove the source and target
-            compare_path = list(path)
-            del compare_path[0], compare_path[-1]
-        return compare_path
-
-    filtered_paths = set()
-    ## Get sorted list of paths
-    paths_by_length = dict()
-    for path in total_distances.keys():
-        paths_by_length.setdefault(len(path), set())
-        paths_by_length[len(path)].add(path)
-
-    sorted_lengths = sorted(paths_by_length.keys(), reverse=True)
-    ## Filter based on redundancy
-    ## Loop from longest to 2nd from shortest
-    for i in range(len(sorted_lengths)-1):
-        length = sorted_lengths[i]
-        for longer_path in paths_by_length[length]:
-            broken = False
-            #compare_path = get_compare_path(longer_path, redundancy_thresh=1.0)
-            compare_path = set(longer_path)
-            ## Check against all shorter paths
-            ## Loop over all shortest path lengths
-            for j in range(len(sorted_lengths)-1, i, -1):
-                slength = sorted_lengths[j]
-                for shorter_path in paths_by_length[slength]:
-                    #shorter_cmp_path = get_compare_path(shorter_path, redundancy_thresh=1.0)
-                    shorter_cmp_path = set(shorter_path)
-                    if (len(shorter_cmp_path.intersection(compare_path)) / len(shorter_cmp_path)) >= 1.0:
-                        filtered_paths.add(longer_path)
-                        ## We can break as soon as we find one shorter_path
-                        ## that longer_path is redundant with
-                        broken = True
-                        break
-                if broken:
-                    break
-
+    ## Filter out all redundant paths first
+    filtered_paths = filter_redundant(total_distances, redundancy_thresh=1.0)
     all_paths = set(shortest_paths[mr_dist][s][t])
     previously_filtered = set(filtered_paths)
-    available_paths = all_paths-previously_filtered
-    min_dist = min([total_distances[path] for path in available_paths]) ## will not change
     ## iterate in reverse order by threshold magnitude so that the least restrictive
     ## threshold is evaluated first, then the next is evaluated without recomputing
     ## for paths that were already filtered with a larger threshold
     sorted_thresholds = sorted([dt for dt, _ in dr_thresholds], reverse=True)
     for distance_thresh in sorted_thresholds:
-        ## Compute minimum distance among remaining paths
-        filtered_paths = set(previously_filtered)
+        available_paths = all_paths-previously_filtered
+        filtered_paths = filter_distance(total_distances, filtered_paths, available_paths, distance_thresh)
         ## Do final distance filtering
-        for path in available_paths-previously_filtered:
-            if total_distances[path] > min_dist*distance_thresh:
-                filtered_paths.add(path)
-
         assert len(filtered_paths) != len(shortest_paths[mr_dist][s][t]), f"All paths filtered for pair {s} and {t}!\nTotal distances:\n{total_distances}"
 
         for path, route_list in shortest_paths[mr_dist][s][t].items():
