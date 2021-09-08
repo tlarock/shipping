@@ -2,7 +2,7 @@ import os
 import networkx as nx
 from contextlib import ExitStack
 from collections import defaultdict, Counter
-from filter_paths import filter_distance, filter_redundant
+from filter_paths import filter_distance, filter_redundant, filter_dist_detour
 
 def compute_route_dist(path, distances):
     d = 0.0
@@ -22,18 +22,22 @@ def write_pair(shortest_paths, s, t, mr_dist, open_outfile, distances):
 
     return total_distances
 
-def write_filtered(shortest_paths, s, t, total_distances, mr_dist, ffilt, dr_thresholds):
+def write_filtered(shortest_paths, s, t, total_distances, mr_dist, ffilt, sorted_thresholds):
     ## Filter out all redundant paths first
     filtered_paths = filter_redundant(total_distances, redundancy_thresh=1.0)
     all_paths = set(shortest_paths[mr_dist][s][t])
     previously_filtered = set(filtered_paths)
     ## iterate in reverse order by threshold magnitude so that the least restrictive
     ## threshold is evaluated first, then the next is evaluated without recomputing
-    ## for paths that were already filtered with a larger threshold
-    sorted_thresholds = sorted([dt for dt, _ in dr_thresholds], reverse=True)
+    ## for paths that were already filtered with a larger threshold 
     for distance_thresh in sorted_thresholds:
         available_paths = all_paths-previously_filtered
-        filtered_paths = filter_distance(total_distances, filtered_paths, available_paths, distance_thresh)
+        if distance_thresh == 'detour':
+            filtered_paths = filter_dist_detour(total_distances, filtered_paths, available_paths, distance_thresh)
+        else:
+            filtered_paths = filter_distance(total_distances, filtered_paths, available_paths, distance_thresh)
+            previously_filtered.update(filtered_paths)
+
         ## Do final distance filtering
         assert len(filtered_paths) != len(shortest_paths[mr_dist][s][t]), f"All paths filtered for pair {s} and {t}!\nTotal distances:\n{total_distances}"
 
@@ -41,7 +45,6 @@ def write_filtered(shortest_paths, s, t, total_distances, mr_dist, ffilt, dr_thr
             if path not in filtered_paths:
                 ffilt[distance_thresh][1.0].write(','.join(path) + '|' + str(mr_dist) + '|' + str(total_distances[path]) + '|' + '|'.join([','.join(map(str, r)) for r in route_list]) + '\n')
 
-        previously_filtered.update(filtered_paths)
 
 
 def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_thresholds=[], redundancy_thresholds=[]):
@@ -111,6 +114,18 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
             for rt in redundancy_thresholds:
                 dr_thresholds.append((dt,rt))
 
+        sorted_thresholds = []
+        dthresh = [dt for dt, _ in dr_thresholds]
+        if all(isinstance(float, dt) for dt in dthresh):
+            sorted_thresholds = sorted([dt for dt in dthresh], reverse=True)
+        else:
+            assert 'detour' in dthresh, 'If string is present in thresholds, it should be "detour".'
+            if len(dthresh) > 1:
+                sorted_thresholds = sorted([dt for dt in dthresh if isinstance(float, dt)], reverse=True)
+
+            ## Always do the detour threshold first, then the others
+            sorted_thresholds = ['detour'] + sorted_thresholds
+
     ## Get all reachable pairs
     reachable_pairs = set()
     for node in G.nodes():
@@ -164,7 +179,7 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
             for (s,t) in pairs_counted.keys():
                 total_distances = write_pair(shortest_paths, s, t, dist, fout, distances)
                 if len(dr_thresholds) > 0:
-                    write_filtered(shortest_paths, s, t, total_distances, dist, ffilt, dr_thresholds)
+                    write_filtered(shortest_paths, s, t, total_distances, dist, ffilt, sorted_thresholds)
 
         ## Ensure we've got paths for every pair we should
         for (s,t) in all_distances.keys():
@@ -234,7 +249,7 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
                 if fout is not None:
                     total_distances = write_pair(shortest_paths, s, t, dist, fout, distances)
                     if len(dr_thresholds) > 0:
-                        write_filtered(shortest_paths, s, t, total_distances, dist, ffilt, dr_thresholds)
+                        write_filtered(shortest_paths, s, t, total_distances, dist, ffilt, sorted_thresholds)
 
             remaining_pairs = reachable_pairs-set(pairs_counted.keys())
             print(f'{len(remaining_pairs)} remaining after distance {dist}.', flush=True)
