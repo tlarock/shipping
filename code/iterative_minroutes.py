@@ -26,18 +26,23 @@ def write_filtered(shortest_paths, s, t, total_distances, mr_dist, ffilt, sorted
     ## Filter out all redundant paths first
     filtered_paths = filter_redundant(total_distances, redundancy_thresh=1.0)
     all_paths = set(shortest_paths[mr_dist][s][t])
-    previously_filtered = set(filtered_paths)
+    previously_filtered = set(filtered_paths) 
+    ## Compute the minimum path and distance. They will not change now that redundant
+    ## paths have been added to filtered_paths
+    available_paths = all_paths-previously_filtered
+    min_path, min_dist = min([(path, total_distances[path]) for path in available_paths], key=lambda kv: kv[1])
     ## iterate in reverse order by threshold magnitude so that the least restrictive
     ## threshold is evaluated first, then the next is evaluated without recomputing
     ## for paths that were already filtered with a larger threshold 
     for distance_thresh in sorted_thresholds:
-        available_paths = all_paths-previously_filtered
         if distance_thresh == 'detour':
-            filtered_paths = filter_dist_detour(total_distances, filtered_paths, available_paths, shipping_dist)
+            filtered_paths = filter_dist_detour(total_distances, filtered_paths, available_paths, shipping_dist, min_path, min_dist)
         else:
-            filtered_paths = filter_distance(total_distances, filtered_paths, available_paths, distance_thresh)
+            filtered_paths = filter_distance(total_distances, filtered_paths, available_paths, distance_thresh, min_dist)
             previously_filtered.update(filtered_paths)
 
+        ## Update available paths
+        available_paths = all_paths-previously_filtered
         ## Do final distance filtering
         assert len(filtered_paths) != len(shortest_paths[mr_dist][s][t]), f"All paths filtered for pair {s} and {t}!\nTotal distances:\n{total_distances}"
 
