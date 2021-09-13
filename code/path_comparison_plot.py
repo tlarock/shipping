@@ -41,8 +41,9 @@ if len(argv) > 1:
 else:
     rt_thresh = 1.0
     dt_thresh = 1.5
+    dt_thresh = 'detour'
 
-with open(scratch_base + f'iterative_paths_filtered_dt-{dt_thresh}_rt-{rt_thresh}.txt', 'r') as fin:
+with open(scratch_base + f'iterative_paths_filtered_dt-{dt_thresh}_rt-{rt_thresh}_updated.txt', 'r') as fin:
     pair_counter = 0
     total_pairs = 0
     prev_pair = (-1,-1)

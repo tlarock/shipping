@@ -38,6 +38,17 @@ with open(scratch_base + 'results/interpolated_paths/route_edge_betweenness_all.
 print("Dumped results, starting full data computation.", flush=True)
 
 filename = scratch_base + 'results/interpolated_paths/iterative_paths.txt'
+print("Starting edge betweenness.", flush=True)
+_, _, edge_betw = get_rb(filename, 'edge', 'all')
+print("Edge betweenness done.", flush=True)
+for edge, btw in edge_betw.items():
+    reb.setdefault(edge, dict())
+    reb[edge][alpha] = btw
+
+with open(scratch_base + 'results/interpolated_paths/route_edge_betweenness_all.pickle', 'wb') as fpickle:
+    pickle.dump(reb, fpickle)
+print("Dumped edge betweenness results.", flush=True)
+
 print("Starting node betweenness.", flush=True)
 _, _, node_betw = get_rb(filename, 'node', 'all')
 print("Node betweenness done.", flush=True)
@@ -49,13 +60,3 @@ with open(scratch_base + 'results/interpolated_paths/route_node_betweenness_all.
     pickle.dump(rnb, fpickle)
 print("Dumped node results.", flush=True)
 
-print("Starting edge betweenness.", flush=True)
-_, _, edge_betw = get_rb(filename, 'edge', 'all')
-print("Edge betweenness done.", flush=True)
-for edge, btw in edge_betw.items():
-    reb.setdefault(edge, dict())
-    reb[edge][alpha] = btw
-
-with open(scratch_base + 'results/interpolated_paths/route_edge_betweenness_all.pickle', 'wb') as fpickle:
-    pickle.dump(reb, fpickle)
-print("Dumped results.", flush=True)
