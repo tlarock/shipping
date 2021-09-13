@@ -46,11 +46,11 @@ def test_distance_filtering():
     sorted_paths = sorted(total_distances.items(), key  = lambda kv: kv[1], reverse=True)
     path_to_filter = sorted_paths[num_filtered][0]
     distance_to_filter = sorted_paths[num_filtered][1]
-    minimum_distance = min(total_distances.values())
-    distance_threshold = distance_to_filter / minimum_distance
+    minimum_path, minimum_dist = sorted(total_distances.items(), key=lambda kv: kv[1])[0]
+    distance_threshold = distance_to_filter / minimum_dist
 
     ## Run filtering
-    filtered_paths = filter_distance(total_distances, set(), set(total_distances.keys()), distance_threshold)
+    filtered_paths = filter_distance(total_distances, set(), set(total_distances.keys()), distance_threshold, minimum_path, minimum_dist)
 
     ## Assert that paths were filtered
     assert len(set(total_distances.keys())-filtered_paths) == len(total_distances.keys())-num_filtered
@@ -95,7 +95,7 @@ def test_distance_detour_filtering():
     paths_to_filter = set([path for path in all_detour_factors if all_detour_factors[path] > minimum_detour_fact])
     #print(minimum_detour_fact, all_detour_factors, paths_to_filter)
     ## Run filtering
-    filtered_paths = filter_dist_detour(total_distances, set(), set(total_distances.keys()), shipping_dist[s,t])
+    filtered_paths = filter_dist_detour(total_distances, set(), set(total_distances.keys()), shipping_dist[s,t], minimum_path, minimum_dist)
     ## Assert that paths were filtered
     assert filtered_paths == paths_to_filter
 

@@ -1,4 +1,4 @@
-def filter_distance(total_distances, filtered_paths, available_paths, distance_thresh):
+def filter_distance(total_distances, filtered_paths, available_paths, distance_thresh, min_path, min_dist):
     '''
     Accepts a paths defaultdict(dict), the result of all_shortest_paths(G),
     and removes (in-place) all paths between the nodes indicated by pair whose
@@ -6,25 +6,22 @@ def filter_distance(total_distances, filtered_paths, available_paths, distance_t
     computed over all paths between the pair of source/target nodes.
 
     '''
-    min_dist = min([total_distances[path] for path in available_paths]) ## will not change
-    for path in available_paths:
+    for path in available_paths-{min_path}:
         if total_distances[path] > min_dist*distance_thresh:
             filtered_paths.add(path)
 
     return filtered_paths
 
-def filter_dist_detour(total_distances, filtered_paths, available_paths, shipping_dist):
+def filter_dist_detour(total_distances, filtered_paths, available_paths, shipping_dist, min_path, min_dist):
     '''
 
     '''
     ## Set the threshold
-    avail_tdists = {path:dist for path, dist in total_distances.items() if path in available_paths}
     ## detour factor for minimum path
-    min_path,  min_dist = sorted(avail_tdists.items(), key=lambda kv: kv[1])[0]
     min_true_detour_fact = min_dist / shipping_dist
-    all_min_detour_facts = {path:total_distances[path]/min_dist for path in available_paths-{min_path}}
-    for path in all_min_detour_facts:
-        if all_min_detour_facts[path] > min_true_detour_fact:
+    all_detour_facts = {path:total_distances[path]/min_dist for path in available_paths-{min_path}}
+    for path in all_detour_facts:
+        if all_detour_facts[path] > min_true_detour_fact:
             filtered_paths.add(path)
 
     return filtered_paths
