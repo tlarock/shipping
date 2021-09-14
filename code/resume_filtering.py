@@ -2,9 +2,15 @@ import sys
 from file_read_backwards import FileReadBackwards
 from iterative_minroutes import write_filtered
 
-args = sys.argv
+shipping_dist = dict()
+distance_file = '../data/port_shipping_distances.csv'
+#distance_file = '/home/larock.t/git/shipping/data/port_shipping_distances.csv'
+with open(distance_file, 'r') as fin:
+    for line in fin:
+        u,v,dist = line.strip().split(',')
+        shipping_dist[(u,v)] = float(dist)
 
-distance_thresh = float(args[1])
+distance_thresh = 'detour'
 redundancy_thresh = 1.0
 scratch_base = '/scratch/larock.t/shipping/results/interpolated_paths/'
 ## TODO Manually remove any incomplete pairs from files!
@@ -18,7 +24,7 @@ with FileReadBackwards(scratch_base + f'iterative_paths_with_routes_filtered_dt-
 
 filtered_paths = dict()
 total_distances = dict()
-with open(scratch_base + 'iterative_paths_with_routes.txt', 'r') as fin:
+with open(scratch_base + 'iterative_paths.txt', 'r') as fin:
     ## Skip to the correct line
     pair_found = False
     for line in fin:
@@ -43,6 +49,7 @@ with open(scratch_base + 'iterative_paths_with_routes.txt', 'r') as fin:
             break
 
     with open(scratch_base + f'iterative_paths_with_routes_filtered_dt-{distance_thresh}_rt-{redundancy_thresh}_updated.txt', 'a') as fout:
+        ffilt = {distance_thresh:{redundancy_thresh:fout}}
         pair_counter = 0
         total_pairs = 0
         prev_pair = pair
@@ -66,12 +73,12 @@ with open(scratch_base + 'iterative_paths_with_routes.txt', 'r') as fin:
             filtered_paths[dist][pair[0]][pair[1]][tuple(path)] = list_routes
 
             if pair != prev_pair and not first:
-                write_filtered(filtered_paths, prev_pair[0], prev_pair[1], total_distances[prev_pair], prev_dist, fout, distance_thresh, redundancy_thresh)
+                write_filtered(filtered_paths, prev_pair[0], prev_pair[1], total_distances[prev_pair], prev_dist, ffilt, [distance_thresh], shipping_dist[prev_pair])
                 del filtered_paths[prev_dist][prev_pair[0]][prev_pair[1]]
                 del total_distances[prev_pair]
                 pair_counter += 1
                 total_pairs += 1
-                if pair_counter == 10_000:
+                if pair_counter == 1000:
                     print(f"{total_pairs} processed.", flush=True)
                     pair_counter = 0
 
@@ -80,4 +87,5 @@ with open(scratch_base + 'iterative_paths_with_routes.txt', 'r') as fin:
             if first: first = False
 
         ## Handle last pair
-        write_filtered(filtered_paths, prev_pair[0], prev_pair[1], total_distances[prev_pair], dist, fout, distance_thresh, redundancy_thresh)
+        write_filtered(filtered_paths, prev_pair[0], prev_pair[1], total_distances[prev_pair], prev_dist, ffilt, [distance_thresh], shipping_dist[prev_pair])
+

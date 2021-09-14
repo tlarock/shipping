@@ -24,7 +24,7 @@ def write_pair(shortest_paths, s, t, mr_dist, open_outfile, distances):
 
 def write_filtered(shortest_paths, s, t, total_distances, mr_dist, ffilt, sorted_thresholds, shipping_dist):
     ## Filter out all redundant paths first
-    filtered_paths = filter_redundant(total_distances, redundancy_thresh=1.0)
+    filtered_paths = filter_redundant(total_distances)
     all_paths = set(shortest_paths[mr_dist][s][t])
     previously_filtered = set(filtered_paths)
     ## Compute the minimum path and distance. They will not change now that redundant

@@ -26,7 +26,7 @@ def filter_dist_detour(total_distances, filtered_paths, available_paths, shippin
 
     return filtered_paths
 
-def filter_redundant(total_distances, redundancy_thresh):
+def filter_redundant(total_distances):
     '''
     Accepts a paths defaultdict(dict), the result of all_shortest_paths(G),
     and removes (in-place) all _redundant_  minimum-route paths between the
@@ -60,39 +60,26 @@ def filter_redundant(total_distances, redundancy_thresh):
     path is visited in the longer path.
 
     '''
-    def get_compare_path(path, redundancy_thresh):
-        if redundancy_thresh == 1.0:
-            ## If the redundancy threhold is the whole path,
-            ## we don't need to remove the endpoints.
-            compare_path = set(path)
-        else:
-            ## Remove the source and target
-            compare_path = list(path)
-            del compare_path[0], compare_path[-1]
-        return compare_path
-
     filtered_paths = set()
     ## Get sorted list of paths
     paths_by_length = dict()
     for path in total_distances.keys():
         paths_by_length.setdefault(len(path), set())
-        paths_by_length[len(path)].add(path)
+        paths_by_length[len(path)].add((path, frozenset(path)))
 
     sorted_lengths = sorted(paths_by_length.keys(), reverse=True)
     ## Filter based on redundancy
     ## Loop from longest to 2nd from shortest
     for i in range(len(sorted_lengths)-1):
         length = sorted_lengths[i]
-        for longer_path in paths_by_length[length]:
+        for longer_path, longer_path_set in paths_by_length[length]:
             broken = False
-            compare_path = get_compare_path(longer_path, redundancy_thresh)
             ## Check against all shorter paths
             ## Loop over all shortest path lengths
             for j in range(len(sorted_lengths)-1, i, -1):
                 slength = sorted_lengths[j]
-                for shorter_path in paths_by_length[slength]:
-                    shorter_cmp_path = get_compare_path(shorter_path, redundancy_thresh)
-                    if (len(shorter_cmp_path.intersection(compare_path)) / len(shorter_cmp_path)) >= redundancy_thresh:
+                for _, shorter_path_set in paths_by_length[slength]:
+                    if (len(shorter_path_set.intersection(longer_path_set)) / len(shorter_path_set)) >= 1.0:
                         filtered_paths.add(longer_path)
                         ## We can break as soon as we find one shorter_path
                         ## that longer_path is redundant with
