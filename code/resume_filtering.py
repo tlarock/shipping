@@ -14,7 +14,7 @@ distance_thresh = 'detour'
 redundancy_thresh = 1.0
 scratch_base = '/scratch/larock.t/shipping/results/interpolated_paths/'
 ## TODO Manually remove any incomplete pairs from files!
-with FileReadBackwards(scratch_base + f'iterative_paths_with_routes_filtered_dt-{distance_thresh}_rt-{redundancy_thresh}_updated.txt') as frb:
+with FileReadBackwards(scratch_base + f'iterative_paths_filtered_dt-{distance_thresh}_rt-{redundancy_thresh}.txt') as frb:
     for line in frb:
         path, mr_dist, route_dist, *routes = line.strip().split('|')
         path = path.strip().split(',')
@@ -48,7 +48,7 @@ with open(scratch_base + 'iterative_paths.txt', 'r') as fin:
             filtered_paths[dist][pair[0]][pair[1]][tuple(path)] = list_routes
             break
 
-    with open(scratch_base + f'iterative_paths_with_routes_filtered_dt-{distance_thresh}_rt-{redundancy_thresh}_updated.txt', 'a') as fout:
+    with open(scratch_base + f'iterative_paths_filtered_dt-{distance_thresh}_rt-{redundancy_thresh}.txt', 'a') as fout:
         ffilt = {distance_thresh:{redundancy_thresh:fout}}
         pair_counter = 0
         total_pairs = 0
@@ -78,7 +78,7 @@ with open(scratch_base + 'iterative_paths.txt', 'r') as fin:
                 del total_distances[prev_pair]
                 pair_counter += 1
                 total_pairs += 1
-                if pair_counter == 1000:
+                if pair_counter == 100:
                     print(f"{total_pairs} processed.", flush=True)
                     pair_counter = 0
 
