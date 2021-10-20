@@ -26,14 +26,16 @@ with open('../data/all_routes_2015.ngram', 'r') as fin:
                 G[path[i-1]][path[i]]['routes'].add(route_id)
 
 shipping_dist = dict()
-#distance_file = '../data/port_shipping_distances.csv'
-distance_file = '/home/larock.t/git/shipping/data/port_shipping_distances.csv'
+distance_file = '../data/port_shipping_distances.csv'
+#distance_file = '/home/larock.t/git/shipping/data/port_shipping_distances.csv'
 with open(distance_file, 'r') as fin:
     for line in fin:
         u,v,dist = line.strip().split(',')
         shipping_dist[(u,v)] = float(dist)
 
-output_file = '/scratch/larock.t/shipping/results/interpolated_paths/iterative_paths'
+#output_file = '/scratch/larock.t/shipping/results/interpolated_paths/parallel_iterative_paths'
+output_file = '../results/interpolated_paths/parallel_iterative_paths'
+
 redundancy_thresholds = [1.0]
-distance_thresholds = [1.0, 1.05, 1.15, 1.25, 1.5, 1.75, 2.0]
+distance_thresholds = [1.0, 1.05, 1.15, 'detour']
 all_shortest_paths(G, routes, output_file=output_file, distances=shipping_dist, redundancy_thresholds=redundancy_thresholds, distance_thresholds=distance_thresholds)

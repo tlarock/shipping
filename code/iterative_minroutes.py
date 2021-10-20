@@ -121,7 +121,7 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
 
         sorted_thresholds = []
         dthresh = [dt for dt, _ in dr_thresholds]
-        if all(isinstance(float, dt) for dt in dthresh):
+        if all([isinstance(dt, float) for dt in dthresh]):
             sorted_thresholds = sorted([dt for dt in dthresh], reverse=True)
         else:
             assert 'detour' in dthresh, 'If string is present in thresholds, it should be "detour".'
