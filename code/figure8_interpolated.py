@@ -1,3 +1,4 @@
+import sys
 import pandas as pd
 import networkx as nx
 import numpy as np
@@ -28,9 +29,13 @@ num_paths = 0
 report_count = 0
 report_interval = 100_000
 scratch_base = '/scratch/larock.t/shipping/'
-#with open(scratch_base + f'results/interpolated_paths/iterative_paths_with_routes.txt', 'r') as fin:
-distance_thresh=2.0
-with open(scratch_base + f'results/interpolated_paths/iterative_paths_with_routes_filtered_dt-{distance_thresh}_rt-1.0.txt', 'r') as fin:
+distance_thresh=sys.argv[1]
+if distance_thresh == 'allpaths':
+    filename = scratch_base + 'results/interpolated_paths/iterative_paths.txt'
+else:
+    filename = scratch_base + f'results/interpolated_paths/iterative_paths_filtered_dt-{distance_thresh}_rt-1.0.txt'
+
+with open(filename, 'r') as fin:
     for line in fin:
         path, mr_dist, rt_dist, *_ = line.strip().split('|')
         path = path.strip().split(',')

@@ -22,7 +22,6 @@ with open(scratch_base + 'iterative_paths.txt', 'r') as fin:
         path = path.split(',')
         pair = path[0], path[-1]
 
-        print(path, routes)
         if pair != prev_pair and not first:
             deg_counts = [d for _,d in sorted(dict(Counter(degs)).items())]
             deg_ent = entropy(deg_counts)
@@ -30,10 +29,6 @@ with open(scratch_base + 'iterative_paths.txt', 'r') as fin:
             rt_ent = entropy(rt_counts)
             data[prev_pair] = {'deg_ent':deg_ent, 'deg_ent_normed':deg_ent / np.log(len(deg_counts)),  \
                                'route_ent': rt_ent, 'route_ent_normed': rt_ent / np.log(len(rt_counts))}
-            print(f'deg_ent:  {data[prev_pair]["deg_ent"]} normed: {data[prev_pair]["deg_ent_normed"]} seq: {deg_counts}')
-            print(f'route_ent:  {data[prev_pair]["route_ent"]} {data[prev_pair]["route_ent_normed"]} seq: {rt_counts}')
-            import sys
-            sys.exit()
             degs = []
             all_routes = []
             pair_counter += 1
