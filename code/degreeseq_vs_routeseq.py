@@ -22,7 +22,6 @@ with open(scratch_base + 'iterative_paths.txt', 'r') as fin:
         path = path.split(',')
         pair = path[0], path[-1]
 
-        print(path, routes)
         if pair != prev_pair and not first:
             data[prev_pair] = dict()
             deg_counts = [d for _,d in sorted(dict(Counter(degs)).items())]
