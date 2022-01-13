@@ -101,6 +101,7 @@ gwdata = pd.read_csv('../data/original/Nodes_2015_country_degree_bc_B_Z_P.csv', 
 port_mapping = dict(zip(gwdata.id.values,gwdata.port.values))
 with open(scratch_base + 'clique_minroute_paths.pickle', 'rb') as fpickle:
     minimum_routes_sp = pickle.load(fpickle)
+
 for pair in paper_paths_dict:
     num_paths = len(paper_paths_dict[pair])
     #num_paths_dist_cg.append(num_paths)
@@ -112,10 +113,14 @@ for pair in paper_paths_dict:
     path_lengths = [len(next(iter(paper_paths_dict[pair])))-1]*len(paper_paths_dict[pair])
     clique_stats['path_lengths'] += path_lengths
 
+rev_port_mapping = {val:key for key,val in port_mapping.items()}
 for pair in minimum_routes_sp:
-    for path in minimum_routes_sp[pair]:
-        #if path not in filtered_paths[pair]:
-        #    continue
+    # To make all inset histograms have the same number of points,
+    # I should change this to paper_paths_dict instead.
+    #for path in minimum_routes_sp[pair]:
+    # convert to paper_paths_dict pair
+    ppair = (rev_port_mapping[pair[0]], rev_port_mapping[pair[1]]))
+    for path in paper_paths_dict[ppair]:
         ## Real distance
         d = 0.0
         for i in range(1, len(path)):
@@ -147,9 +152,8 @@ for pair in coroute_paths:
     coroute_stats['path_lengths'] += coroute_lengths
 
 for pair in minimum_routes:
-    for path in minimum_routes[pair]:
-        #if path not in filtered_paths[pair]:
-        #    continue
+    #for path in minimum_routes[pair]:
+    for path in coroute_paths[pair]:
         ## Real distance
         d = 0.0
         for i in range(1, len(path)):
@@ -188,5 +192,5 @@ for pair in pg_paths:
 
 
 print("Dumping stats.", flush=True)
-with open(scratch_base + f'path_comparison_stats_dt-{dt_thresh}_rt-{rt_thresh}.pickle', 'wb') as fpickle:
+with open(scratch_base + f'path_comparison_stats_dt-{dt_thresh}_rt-{rt_thresh}_alldists.pickle', 'wb') as fpickle:
     pickle.dump((filtered_stats, clique_stats, coroute_stats, path_stats), fpickle)
