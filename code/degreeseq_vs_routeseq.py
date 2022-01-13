@@ -36,7 +36,7 @@ with open(scratch_base + 'iterative_paths.txt', 'r') as fin:
             rt_ent = entropy(rt_counts)
             data[prev_pair]['route_ent'] = rt_ent
             if rt_ent > 0.0:
-                data[prev_pair]['route_ent_normed'] = rt_ent / np.log(len(rt_counts))}
+                data[prev_pair]['route_ent_normed'] = rt_ent / np.log(len(rt_counts))
             else:
                 data[prev_pair]['route_ent_normed'] = 0.0
 
