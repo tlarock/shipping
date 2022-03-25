@@ -50,20 +50,12 @@ with open(filename, 'r') as fin:
 
 print(f"Read {num_paths} paths.", flush=True)
 
-paper_B = True
 gwdata = pd.read_csv('../data/original/Nodes_2015_country_degree_bc_B_Z_P.csv', encoding='latin-1' )
-if paper_B:
-    B = dict(zip(gwdata.port,gwdata.B.values)) ## Gatewayness
-    num_sc = 37
-    core_ports = sorted(B.items(), key=lambda kv:kv[1], reverse=True)[0:num_sc]
-    core_ports = [name for name,_ in core_ports]
-    non_core_ports = [port for port in B if port not in core_ports]
-else:
-    import pickle
-    with open("../results/structural_core_nodes.pickle", 'rb') as fpickle:
-        core_ports = pickle.load(fpickle)
-    num_sc = 49
-    non_core_ports = [port for port in gwdata.port if port not in core_ports]
+B = dict(zip(gwdata.port,gwdata.B.values)) ## Gatewayness
+num_sc = 37
+core_ports = sorted(B.items(), key=lambda kv:kv[1], reverse=True)[0:num_sc]
+core_ports = [name for name,_ in core_ports]
+non_core_ports = [port for port in B if port not in core_ports]
 
 print("Loaded B.", flush=True)
 core_ports_set = set(core_ports)
