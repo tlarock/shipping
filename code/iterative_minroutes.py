@@ -38,7 +38,9 @@ def write_filtered(shortest_paths, s, t, total_distances, mr_dist, ffilt, sorted
         if distance_thresh == 'detour':
             filtered_paths = filter_dist_detour(total_distances, filtered_paths, available_paths, shipping_dist, min_path, min_dist)
         else:
-            filtered_paths = filter_distance(total_distances, filtered_paths, available_paths, distance_thresh, min_dist)
+            filtered_paths = filter_distance(total_distances, filtered_paths,
+                                             available_paths, distance_thresh,
+                                             min_path, min_dist)
             previously_filtered.update(filtered_paths)
 
         ## Update available paths
@@ -71,6 +73,10 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
                         target in G.
     '''
     def _add_path(shortest_paths, source, target, path, route_id):
+        '''
+        Convenince function for adding a 1-route _path_ between _source_
+        and _target_ to the _shortest_paths_ data structure.
+        '''
         shortest_paths[1].setdefault(source, dict())
         shortest_paths[1][source].setdefault(target, dict())
         path_tup = tuple(path)
@@ -79,6 +85,10 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
         shortest_paths[1][source][target][path_tup].add(tuple(route_list))
 
     def _add_open_walk(route, route_id, shortest_paths, pairs_counted):
+        '''
+        Convenience function for adding all open walks between nodes on
+        the _route_ with id _route_id_.
+        '''
         for i in range(len(route)):
             for j in range(i+1, len(route)):
                 if route[i] != route[j]:
@@ -89,6 +99,7 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
                         pairs_counted[(route[i], route[j])] = dist
 
     def _add_closed_walk(route, route_id, shortest_paths, pairs_counted):
+        ''' Same as above, but for closed walks '''
         for i in range(len(route)):
             for j in range(len(route)):
                 if route[i] != route[j]:
@@ -109,7 +120,12 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
                         _add_path(shortest_paths, route[i], route[j], path, route_id)
                         pairs_counted[(route[i], route[j])] = dist
 
+    # Ensure that route labels begin with 1 in G.edges
     assert min([rt for _,_, edat in G.edges(data=True) for rt in edat['routes']]) > 0, "Route labels must begin with 1."
+
+    # Transform distance_thresholds and redundancy_thresholds 
+    # into fully usable format. Note that redundancy_thresholds
+    # is usually just a list with [1.0]
     dr_thresholds = []
     if (len(distance_thresholds) > 0 or len(redundancy_thresholds) > 0):
         assert output_file != '', "Filtering only makes sense if output_file is specified."
@@ -126,7 +142,7 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
         else:
             assert 'detour' in dthresh, 'If string is present in thresholds, it should be "detour".'
             if len(dthresh) > 1:
-                sorted_thresholds = sorted([dt for dt in dthresh if isinstance(float, dt)], reverse=True)
+                sorted_thresholds = sorted([dt for dt in dthresh if isinstance(dt, float)], reverse=True)
 
             ## Always do the detour threshold first, then the others
             sorted_thresholds = ['detour'] + sorted_thresholds
@@ -152,7 +168,10 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
                     if route[i] != route[j]:
                         G_indirect.add_edge(route[i], route[j])
 
+    # Get the minimum-route distance between all pairs of nodes,
+    # which is equivalently the diistance in the co-route graph G_indirect.
     all_distances = {(s,t):nx.shortest_path_length(G_indirect, s, t) for (s,t) in reachable_pairs}
+
     ## Compute all pairs min route paths 
     pairs_counted = dict()
     shortest_paths = defaultdict(dict)
@@ -191,6 +210,7 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
             if all_distances[(s,t)] == 1:
                 assert (s,t) in pairs_counted, f"({s},{t}) not in pairs_counted!"
 
+        # Compute the set of remaining pairs
         remaining_pairs = reachable_pairs-set(pairs_counted.keys())
         print(f'{len(remaining_pairs)} remaining after distance 1.', flush=True)
         if fout is not None:
@@ -218,6 +238,7 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
                     ## then t can be reached using dist routes
                     if t in shortest_paths[1][w]:
                         found_t = True
+                        # Construct all pairs of paths between s and t
                         for p1 in shortest_paths[dist-1][s][w]:
                             for p2 in shortest_paths[1][w][t]:
                                 shortest_paths[dist].setdefault(s, dict())
@@ -264,6 +285,5 @@ def all_shortest_paths(G, all_routes, output_file='', distances=None, distance_t
                 for (distance_thresh,_) in dr_thresholds:
                     ffilt[distance_thresh][1.0].flush()
                     os.fsync(ffilt[distance_thresh][1.0].fileno())
-
 
     return shortest_paths
