@@ -32,8 +32,8 @@ with open(distance_file, 'r') as fin:
         u,v,dist = line.strip().split(',')
         shipping_dist[(u,v)] = float(dist)
 
-output_file = '../results/synthetic_paths/test'
+output_file = '../results/synthetic_paths/synthetic'
 
 redundancy_thresholds = [1.0]
-distance_thresholds = [1.0, 1.05, 1.15, 'detour']
+distance_thresholds = [1.0, 1.05, 1.15, 1.25, 1.5, 1.75, 2.0, 'detour']
 all_shortest_paths(G, routes, output_file=output_file, distances=shipping_dist, redundancy_thresholds=redundancy_thresholds, distance_thresholds=distance_thresholds)

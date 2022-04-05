@@ -110,22 +110,29 @@ for pair in paper_paths_dict:
     if mpair in minimum_routes_sp:
         route_lengths = [p for p in minimum_routes_sp[mpair].values()]
         clique_stats['route_lengths'] += route_lengths
-    path_lengths = [len(next(iter(paper_paths_dict[pair])))-1]*len(paper_paths_dict[pair])
-    clique_stats['path_lengths'] += path_lengths
+    #path_lengths = [len(next(iter(paper_paths_dict[pair])))-1]*len(paper_paths_dict[pair])
+    #clique_stats['path_lengths'] += path_lengths
 
-rev_port_mapping = {val:key for key,val in port_mapping.items()}
-for pair in minimum_routes_sp:
-    # To make all inset histograms have the same number of points,
-    # I should change this to paper_paths_dict instead.
-    #for path in minimum_routes_sp[pair]:
-    # convert to paper_paths_dict pair
-    ppair = (rev_port_mapping[pair[0]], rev_port_mapping[pair[1]]))
-    for path in paper_paths_dict[ppair]:
-        ## Real distance
+    # get shipping distance for *ALL* shortest paths
+    for path in paper_paths_dict[pair]:
+        clique_stats['path_lengths'].append(len(path))
+        # Real distance
         d = 0.0
         for i in range(1, len(path)):
-            d += shipping_dist[path[i-1], path[i]]
+            mpair = (port_mapping[path[i-1]], port_mapping[path[i]])
+            d += shipping_dist[mpair]
         clique_stats['distances'].append(d)
+
+
+#for pair in minimum_routes_sp:
+#    # To make all inset histograms have the same number of points,
+#    # I should change this to paper_paths_dict instead.
+#    for path in minimum_routes_sp[pair]:
+#        ## Real distance
+#        d = 0.0
+#        for i in range(1, len(path)):
+#            d += shipping_dist[path[i-1], path[i]]
+#        clique_stats['distances'].append(d)
 
 
 ## coroute graph paths
@@ -148,17 +155,24 @@ for pair in coroute_paths:
     if pair in minimum_routes:
         route_lengths = [p for p in minimum_routes[pair].values()]
         coroute_stats['route_lengths'] += route_lengths
-    coroute_lengths = [len(next(iter(coroute_paths[pair])))-1]*len(coroute_paths[pair])
-    coroute_stats['path_lengths'] += coroute_lengths
-
-for pair in minimum_routes:
-    #for path in minimum_routes[pair]:
+    #coroute_lengths = [len(next(iter(coroute_paths[pair])))-1]*len(coroute_paths[pair])
+    #coroute_stats['path_lengths'] += coroute_lengths
+    
     for path in coroute_paths[pair]:
+        coroute_stats['path_lengths'].append(len(path)-1)
         ## Real distance
         d = 0.0
         for i in range(1, len(path)):
             d += shipping_dist[path[i-1], path[i]]
         coroute_stats['distances'].append(d)
+
+#for pair in minimum_routes:
+#    for path in minimum_routes[pair]:
+#        ## Real distance
+#        d = 0.0
+#        for i in range(1, len(path)):
+#            d += shipping_dist[path[i-1], path[i]]
+#        coroute_stats['distances'].append(d)
 
 ## Path graph paths
 print("Computing path path stats.", flush=True)
@@ -182,7 +196,6 @@ for pair in pg_paths:
     path_lengths = [len(next(iter(pg_paths[pair])))-1]*len(pg_paths[pair])
     path_stats['path_lengths'] += path_lengths
 
-for pair in pg_paths:
     for path in pg_paths[pair]:
         ## Real distance
         d = 0.0
